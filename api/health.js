@@ -10,6 +10,13 @@ export default async function handler(req, res) {
       milestone: 1,
       service: 'segments-cloud-ops-center/ingestion',
       ...summary,
+      // Provenance: which commit this function was built from. Vercel injects
+      // these at build time; they are null when running locally.
+      deploy: {
+        commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+        ref: process.env.VERCEL_GIT_COMMIT_REF ?? null,
+        env: process.env.VERCEL_ENV ?? null,
+      },
       sourceAttempts: dataset.meta.attempts,
       cache: dataset.cache,
     });
