@@ -2,7 +2,7 @@
 
 Read-only operations intelligence over the Segments Cloud fleet dataset.
 
-**Live:** https://segments-ops-center.vercel.app — see [`DEPLOY.md`](DEPLOY.md) before sharing the link.
+**Live:** https://cloud-miner-value-dashboard.vercel.app — see [`DEPLOY.md`](DEPLOY.md) before sharing the link.
 
 **Milestone 1 — data ingestion and normalization — is implemented.**
 Milestones 2–10 are specified in [`docs/MILESTONES.md`](docs/MILESTONES.md).

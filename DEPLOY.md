@@ -1,21 +1,19 @@
 # Deploying the Ops Center to Vercel
 
-**Live:** https://segments-ops-center.vercel.app · Vercel project `segments-ops-center`
-(team `ganushi-s-projects`), git-linked to this repository with Root Directory `ops-center`.
-Every push to the linked branch redeploys. `/api/health` on the live URL reproduces the
-local figures exactly (verified 2026-09-02).
+**Live:** https://cloud-miner-value-dashboard.vercel.app · Vercel project
+`cloud-miner-value-dashboard` (team `ganushi-s-projects`), git-linked to this repository.
+This repository is the standalone home of the product; the code sits at the repository
+root, so no Root Directory is set. Every push to the linked branch redeploys.
 
-This directory is a **standalone Vercel project**. It shares nothing with the
-Mining Commander app at the repository root — separate `package.json`, separate
-`vercel.json`, no shared build.
+This repository is a **standalone Vercel project** with zero runtime dependencies.
 
 ## Project settings
 
 | Setting | Value |
 | --- | --- |
-| Repository | `ganushi-svg/segments-dashboard` |
-| Branch | `claude/segments-cloud-ops-center-mfsuxv` |
-| **Root Directory** | **`ops-center`** ← must be set, or Vercel builds the root app |
+| Repository | `ganushi-svg/CLOUD-MINER-VALUE-DASHBOARD` |
+| Branch | `claude/segments-cloud-ops-center-mfsuxv` (production follows `main` once merged) |
+| Root Directory | *(leave empty — code is at the repository root)* |
 | Framework preset | Other |
 | Build command | *(leave empty)* |
 | Install command | *(leave empty — zero runtime dependencies)* |
@@ -46,10 +44,9 @@ Until then, keep Vercel Deployment Protection on:
 **Status at 2026-09-02: protection is OFF** — the production URL answers without
 authentication. It could not be enabled through the Vercel MCP integration because that
 integration's grant only covers the three projects that existed when it was authorised;
-the API returns *404 Project not found* for `segments-ops-center` while the creation call
-itself returns *409 already exists*. Either enable protection in the Vercel dashboard
+the API returns *404 Project not found* for projects created after that authorisation. Either enable protection in the Vercel dashboard
 directly, or widen the Claude integration's project access (Vercel → Settings →
-Integrations → Claude → Manage Access → add `segments-ops-center`) so it can be managed
+Integrations → Claude → Manage Access → *All projects*) so it can be managed
 from here. New projects inherit the team's default protection, so verify rather than assume.
 If the URL must be shared outside the Vercel team, use Password Protection or
 Trusted IPs rather than turning protection off.
