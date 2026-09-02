@@ -1,0 +1,14 @@
+{
+  "name": "segments-cloud-ops-center",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Segments Cloud AI Operations Command Center - Milestone 1: data ingestion and normalization",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "ingest": "node scripts/ingest.mjs",
+    "capture": "node scripts/capture-fixture.mjs",
+    "dev": "node scripts/serve.mjs"
+  }
+}

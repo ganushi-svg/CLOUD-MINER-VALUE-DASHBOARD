@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Segments Cloud · Ingestion Status</title>
+<style>
+  :root{--navy:#1B3A8F;--blue:#2E6FD6;--gold:#F5A623;--bg:#0B1220;--panel:#131C2E;--line:#243149;--text:#E8EDF7;--muted:#93A2BF;--crit:#F2555A;--warn:#F5A623;--ok:#3DD68C}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1040px;margin:0 auto;padding:32px 20px 64px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
+  .eyebrow{color:var(--gold);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+  h1{margin:6px 0 4px;font-size:24px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .k{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .v{font-size:22px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+  .v small{font-size:12px;color:var(--muted);font-weight:400}
+  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:30px 0 10px;font-weight:600}
+  table{width:100%;border-collapse:collapse}
+  td,th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.06em}
+  .CRITICAL{background:rgba(242,85,90,.16);color:var(--crit)}
+  .WARNING{background:rgba(245,166,35,.16);color:var(--warn)}
+  .INFO{background:rgba(61,214,140,.14);color:var(--ok)}
+  code{background:#0d1526;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#C7D5F0}
+  a{color:var(--blue)}
+  .note{color:var(--muted);font-size:12.5px;margin-top:8px}
+  .err{background:rgba(242,85,90,.1);border:1px solid var(--crit);border-radius:10px;padding:14px 16px;color:#FFD8D9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Segments Cloud · AI Operations Command Center</div>
+    <h1>Milestone 1 — Data ingestion &amp; normalization</h1>
+    <div class="sub">Read-only pipeline over <code>Client_Miner_Model_Summary_FULL</code>. This page verifies what was ingested; it is not the operations dashboard (Milestone 5).</div>
+  </header>
+  <div id="app">Loading ingestion status…</div>
+  <h2>API</h2>
+  <table>
+    <tr><td><code>GET /api/health</code></td><td>Liveness, source used, fleet rollup, validation counts.</td></tr>
+    <tr><td><code>GET /api/dataset</code></td><td>Full normalized dataset. <code>?section=models|clients|holdings|workers|summary</code>.</td></tr>
+    <tr><td><code>GET /api/quality</code></td><td>Data-quality findings with severities.</td></tr>
+    <tr><td><code>GET|POST /api/refresh</code></td><td>Force re-ingest, bypassing the warm-instance cache.</td></tr>
+  </table>
+</div>
+<script>
+const usd = (minor) => minor == null ? '—' : '$' + (minor/100).toLocaleString('en-US',{maximumFractionDigits:0});
+const n = (x) => x == null ? '—' : x.toLocaleString('en-US');
+
+fetch('/api/health').then(r => r.json()).then(d => {
+  const app = document.getElementById('app');
+  if (d.error) {
+    app.innerHTML = `<div class="err"><strong>Ingestion unavailable.</strong> ${d.detail ?? ''}</div>`;
+    return;
+  }
+  const f = d.fleet, c = d.counts, v = d.validation;
+  app.innerHTML = `
+    <div class="grid">
+      <div class="card"><div class="k">Source</div><div class="v" style="font-size:16px">${d.source}</div></div>
+      <div class="card"><div class="k">Report date</div><div class="v" style="font-size:16px">${d.reportDate ?? '—'}</div></div>
+      <div class="card"><div class="k">Units</div><div class="v">${n(f.units)}</div></div>
+      <div class="card"><div class="k">Hashrate</div><div class="v">${n(f.hashrateTh)} <small>TH/s</small></div></div>
+      <div class="card"><div class="k">Power</div><div class="v">${n(f.powerKw)} <small>kW</small></div></div>
+      <div class="card"><div class="k">Used value</div><div class="v">${usd(f.usedValueMinor)}</div></div>
+      <div class="card"><div class="k">Fresh value</div><div class="v">${usd(f.freshValueMinor)}</div></div>
+      <div class="card"><div class="k">Records</div><div class="v" style="font-size:15px">${c.models} models · ${c.clients} clients<br>${c.holdings} holdings · ${c.workers} workers</div></div>
+    </div>
+    <div class="note">Valuation totals cover only units with a quoted price; see the price-coverage finding below.</div>
+    <h2>Validation — ${v.ok ? 'no contradictions' : 'FAILED'} (${v.counts.CRITICAL} critical, ${v.counts.WARNING} warning, ${v.counts.INFO} info)</h2>
+    <table id="findings"><thead><tr><th style="width:92px">Severity</th><th style="width:230px">Rule</th><th>Finding</th></tr></thead><tbody></tbody></table>`;
+  return fetch('/api/quality').then(r => r.json()).then(q => {
+    document.querySelector('#findings tbody').innerHTML = q.findings
+      .map(x => `<tr><td><span class="pill ${x.severity}">${x.severity}</span></td><td><code>${x.id}</code></td><td>${x.summary}</td></tr>`)
+      .join('');
+  });
+}).catch(e => {
+  document.getElementById('app').innerHTML = `<div class="err"><strong>Could not reach the ingestion API.</strong> ${e.message}</div>`;
+});
+</script>
+</body>
+</html>
