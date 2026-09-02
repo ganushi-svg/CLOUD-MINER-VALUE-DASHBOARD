@@ -166,6 +166,12 @@ guess: year typos (`21/08/0226`, `13/02/0206`), duration as free text
 **Acceptance criteria.** A canonical site dimension maps every alias to one key;
 unparseable dates and durations are quarantined with a finding, never coerced.
 
+**Delivered early — supplier price feed.** `src/pricefeed/` parses supplier price lists
+(WhatsApp Business webhook at `api/whatsapp.js`, or `POST /api/pricefeed`), resolves each
+line to the registry on a (family, hashrate) key, stores observations with basis and
+confidence, and the dashboard's Price feed tab compares them with the sheet's quotes.
+Store is memory or a `PriceFeed` sheet tab until M2's database lands.
+
 ---
 
 ## Milestone 4 — AI intelligence layer

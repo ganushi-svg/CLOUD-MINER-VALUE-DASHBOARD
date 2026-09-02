@@ -51,6 +51,43 @@ from here. New projects inherit the team's default protection, so verify rather 
 If the URL must be shared outside the Vercel team, use Password Protection or
 Trusted IPs rather than turning protection off.
 
+## Supplier price feed and the WhatsApp webhook
+
+**What WhatsApp allows.** Meta's Cloud API delivers messages sent *to your WhatsApp
+Business number*. It cannot read a supplier group that a personal number belongs to,
+and the unofficial libraries that can (Baileys, whatsapp-web.js) get business accounts
+banned. So the supported flow is: a designated colleague forwards the day's price list
+from the group to the business number, or the supplier is asked to post to it directly.
+`WHATSAPP_ALLOWED_SENDERS` is the "one group" control — only those numbers feed prices.
+
+**Set-up (about 20 minutes, once).**
+
+1. [developers.facebook.com](https://developers.facebook.com) → *Create App* → type *Business*
+   → add the **WhatsApp** product. Note the *Phone number ID* and, under *App settings →
+   Basic*, the **App Secret**.
+2. In Vercel → project → *Settings → Environment Variables* add `WHATSAPP_APP_SECRET`,
+   a `WHATSAPP_VERIFY_TOKEN` of your choosing, and `WHATSAPP_ALLOWED_SENDERS`
+   (digits only, e.g. `9715xxxxxxxx`). Redeploy.
+3. Meta app → *WhatsApp → Configuration → Webhook*: callback URL
+   `https://cloud-miner-value-dashboard.vercel.app/api/whatsapp`, verify token as above,
+   then subscribe to the **messages** field. Meta calls `GET /api/whatsapp` for the
+   handshake; the endpoint answers only when the token matches.
+4. Send a test list to the business number. `GET /api/pricefeed` shows what was parsed;
+   the **Price feed** tab shows it against the sheet's quotes.
+
+Every delivery is verified with `X-Hub-Signature-256` (HMAC over the raw body); an
+unsigned or tampered request is rejected before parsing. Image and PDF price lists are
+acknowledged but not parsed — only text and captions are. OCR is a later addition.
+
+**Without WhatsApp.** `POST /api/pricefeed` with `Authorization: Bearer
+$PRICEFEED_INGEST_SECRET` and `{ "text": "...", "source": "..." }` runs the identical
+parser — usable from an email-forwarding rule, a script, or a paste.
+
+**Durability.** The default store is function memory: fine for a trial, gone on the next
+cold start, and labelled *not durable* in the UI. Set `PRICEFEED_STORE=sheet` (with the
+service account) to write observations into a `PriceFeed` tab of the workbook until
+Milestone 2's database exists.
+
 ## Verifying a deployment
 
 `GET /api/health` should return exactly these figures — they are the same numbers

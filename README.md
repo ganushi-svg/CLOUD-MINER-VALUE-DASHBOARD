@@ -53,6 +53,16 @@ twelve data-quality findings, and an explicit list of what this source cannot an
 Every chart has a table view; chart colours were validated for CVD separation and
 contrast on the dark surface. Sections exist only where the data supports them.
 
+## Supplier price feed
+
+Supplier price lists (forwarded from WhatsApp to the business number, or POSTed to
+`/api/pricefeed`) are parsed line by line, resolved to the fleet's canonical models on a
+(family, hashrate) key — the same tokenizer runs over the sheet's own labels — and stored
+as observations with an explicit basis (used / fresh / unknown) and confidence. Lines that
+don't resolve are reported, never guessed. The **Price feed** tab compares each observed
+price with the quote recorded in the sheet. Set-up and the WhatsApp constraints are in
+[`DEPLOY.md`](DEPLOY.md).
+
 ## Run it
 
 ```bash
@@ -70,6 +80,9 @@ npm run dev                      # http://localhost:3000
 | `GET /api/dataset` | Normalized dataset; `?section=models\|clients\|holdings\|workers\|summary` |
 | `GET /api/quality` | Data-quality findings with severities |
 | `GET\|POST /api/refresh` | Force re-ingest, bypassing the warm-instance cache |
+| `GET /api/pricefeed` | Observed supplier prices vs sheet quotes; `?view=all` for every observation |
+| `POST /api/pricefeed` | Ingest a price list (bearer `PRICEFEED_INGEST_SECRET`) |
+| `GET\|POST /api/whatsapp` | Meta Cloud API webhook: verification handshake and signed message delivery |
 
 ## Configuration
 

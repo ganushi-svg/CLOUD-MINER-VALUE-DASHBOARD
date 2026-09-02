@@ -26,7 +26,7 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 export const DEFAULT_SHEET_ID = '1XySY4bTYTU0XYjndcRlKyBcXLH8n9FiGQtet-iYTRU4';
 
-function serviceAccount(env) {
+export function serviceAccount(env) {
   const raw = env.GOOGLE_SERVICE_ACCOUNT;
   if (!raw) return null;
   try {
@@ -39,15 +39,16 @@ function serviceAccount(env) {
   }
 }
 
-let tokenCache = { value: null, expiresAt: 0 };
+const tokenCache = {}; // per scope
 
-async function accessToken(sa, fetchImpl) {
+export async function accessToken(sa, fetchImpl, scope = SCOPE) {
   const now = Math.floor(Date.now() / 1000);
-  if (tokenCache.value && now < tokenCache.expiresAt - 60) return tokenCache.value;
+  const cached = tokenCache[scope];
+  if (cached && now < cached.expiresAt - 60) return cached.value;
 
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
   const header = b64({ alg: 'RS256', typ: 'JWT' });
-  const claim = b64({ iss: sa.client_email, scope: SCOPE, aud: TOKEN_URL, iat: now, exp: now + 3600 });
+  const claim = b64({ iss: sa.client_email, scope, aud: TOKEN_URL, iat: now, exp: now + 3600 });
   const signature = crypto
     .createSign('RSA-SHA256')
     .update(`${header}.${claim}`)
@@ -64,8 +65,8 @@ async function accessToken(sa, fetchImpl) {
   });
   if (!res.ok) throw new Error(`token exchange failed: HTTP ${res.status}`);
   const json = await res.json();
-  tokenCache = { value: json.access_token, expiresAt: now + (json.expires_in ?? 3600) };
-  return tokenCache.value;
+  tokenCache[scope] = { value: json.access_token, expiresAt: now + (json.expires_in ?? 3600) };
+  return tokenCache[scope].value;
 }
 
 async function fromServiceAccount({ sheetId, env, fetchImpl }) {

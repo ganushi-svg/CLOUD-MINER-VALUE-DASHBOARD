@@ -1,0 +1,60 @@
+// Price feed: read observed supplier prices, or ingest a price list by hand.
+//
+// GET  /api/pricefeed?view=latest|all
+// POST /api/pricefeed   { text, source?, sender?, observedAt? }
+//      Authorization: Bearer <PRICEFEED_INGEST_SECRET>
+//
+// The POST path is how a price list reaches the feed without WhatsApp: paste,
+// forward-by-email automation, or a test. It runs the exact code the webhook runs.
+import { createStore } from '../src/pricefeed/store.js';
+import { ingestText } from '../src/pricefeed/ingest.js';
+import { getDataset } from '../src/dataset.js';
+
+export default async function handler(req, res) {
+  try {
+    if (req.method === 'GET') {
+      const store = createStore();
+      const view = String(req.query?.view ?? 'latest');
+      const [latest, all, dataset] = await Promise.all([store.latest(), view === 'all' ? store.all() : [], getDataset()]);
+      const quotes = new Map(dataset.models.map((m) => [m.modelKey, m]));
+      // Attach the sheet's own quotes so the caller sees observed vs. recorded.
+      const enrich = (o) => {
+        const q = quotes.get(o.modelKey);
+        const ref = o.basis === 'FRESH' ? q?.freshUnitPriceMinor : q?.usedUnitPriceMinor;
+        return { ...o, sheetUnitPriceMinor: ref ?? null,
+          deltaPct: ref ? Number((((o.unitPriceMinor - ref) / ref) * 100).toFixed(1)) : null };
+      };
+      return res.status(200).json({
+        store: { kind: store.kind, durable: store.durable },
+        latest: latest.map(enrich),
+        observations: all.map(enrich),
+        generatedAt: new Date().toISOString(),
+      });
+    }
+    if (req.method === 'POST') {
+      const secret = process.env.PRICEFEED_INGEST_SECRET;
+      if (!secret) return res.status(503).json({ error: 'ingest_disabled', detail: 'PRICEFEED_INGEST_SECRET is not set' });
+      const given = String(req.headers?.authorization ?? '').replace(/^Bearer\s+/i, '');
+      if (given.length !== secret.length || !timingSafeEqualStr(given, secret)) return res.status(401).json({ error: 'unauthorized' });
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body ?? {});
+      if (!body.text || typeof body.text !== 'string') return res.status(400).json({ error: 'bad_request', detail: 'text (string) is required' });
+      const report = await ingestText({
+        text: body.text.slice(0, 20_000),
+        source: String(body.source ?? 'manual').slice(0, 80),
+        sender: body.sender ? String(body.sender).slice(0, 80) : null,
+        observedAt: body.observedAt ?? new Date().toISOString(),
+        messageId: body.messageId ?? null,
+      });
+      return res.status(200).json(report);
+    }
+    return res.status(405).json({ error: 'method_not_allowed' });
+  } catch (err) {
+    return res.status(500).json({ error: 'pricefeed_error', detail: err.message });
+  }
+}
+
+function timingSafeEqualStr(a, b) {
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}

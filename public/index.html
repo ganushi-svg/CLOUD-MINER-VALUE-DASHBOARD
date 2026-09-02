@@ -41,6 +41,19 @@
   .hero{display:grid;grid-template-columns:minmax(260px,1.2fr) repeat(3,minmax(0,1fr));gap:14px;margin:28px 0 14px}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
   .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;margin-bottom:14px}
+  .tabs{max-width:1240px;margin:0 auto;padding:0 24px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);font:600 12.5px/1 var(--sans);letter-spacing:.04em;padding:12px 14px 11px;cursor:pointer;white-space:nowrap;border-radius:6px 6px 0 0}
+  .tab:hover{color:var(--ink);background:rgba(255,255,255,.03)}
+  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--brand-gold)}
+  .tab:focus-visible{outline:2px solid var(--series-1);outline-offset:-2px}
+  .tab .n{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.08);font-size:10px;color:var(--ink-2)}
+  .panel{padding-top:24px}
+  .panel[hidden]{display:none}
+  .panel>.card{margin-bottom:14px}
+  .delta{font-variant-numeric:tabular-nums}
+  .empty{padding:28px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+  .empty code{display:inline-block;margin-top:6px}
   .card{background:var(--surface);border:1px solid var(--ring);border-radius:var(--radius);padding:18px 20px;min-width:0}
   .card.hero-card{background:linear-gradient(135deg,#142556 0%,#111B30 60%);border-color:rgba(74,139,240,.25)}
   .card h2{margin:0 0 2px;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:.01em}
@@ -57,7 +70,7 @@
   .badge.sample{border-color:rgba(250,178,25,.4);color:#F6C65A}
 
   /* ---- Charts ---- */
-  svg.chart{display:block;width:100%;height:auto;overflow:visible}
+  svg.chart{display:block;width:100%;max-width:880px;height:auto;overflow:visible}
   .chart text{font-family:var(--sans);fill:var(--ink-2);font-size:12px}
   .chart .lbl{fill:var(--ink-2)} .chart .val{fill:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
   .chart .grid{stroke:var(--grid);stroke-width:1} .chart .base{stroke:var(--baseline);stroke-width:1}
@@ -105,6 +118,7 @@
     </div>
     <div class="status" id="status" aria-live="polite"></div>
   </div>
+  <nav class="tabs" role="tablist" aria-label="Sections" id="tabs"></nav>
 </header>
 
 <main class="wrap" id="app"><p class="note" style="padding:40px 0">Loading operational dataset…</p></main>
@@ -252,6 +266,75 @@ const sevIcon = (sev) => {
   const svg = s('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' }); svg.append(s('path', { d: p, fill: 'currentColor' })); return svg;
 };
 
+/* ---------- tabs ---------- */
+const TABS = [
+  ['overview', 'Overview'], ['fleet', 'Fleet'], ['clients', 'Clients'], ['valuation', 'Valuation'],
+  ['economics', 'Economics'], ['quality', 'Data quality'], ['pricefeed', 'Price feed'],
+];
+function buildPanels(app) {
+  const nav = document.getElementById('tabs'); nav.replaceChildren();
+  const panels = {};
+  for (const [key, label] of TABS) {
+    const btn = $('button', { class: 'tab', role: 'tab', type: 'button', id: `tab-${key}`, 'aria-controls': `panel-${key}`, 'aria-selected': 'false', tabindex: '-1', text: label });
+    btn.addEventListener('click', () => { location.hash = key; });
+    btn.addEventListener('keydown', (e) => {
+      const i = TABS.findIndex(([k]) => k === key);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const j = (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length; location.hash = TABS[j][0]; document.getElementById(`tab-${TABS[j][0]}`).focus(); }
+    });
+    nav.append(btn);
+    panels[key] = $('section', { class: 'panel', role: 'tabpanel', id: `panel-${key}`, 'aria-labelledby': `tab-${key}`, hidden: '' });
+    app.append(panels[key]);
+  }
+  return panels;
+}
+function activateTab() {
+  const key = TABS.some(([k]) => k === location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
+  for (const [k] of TABS) {
+    const on = k === key;
+    const btn = document.getElementById(`tab-${k}`), panel = document.getElementById(`panel-${k}`);
+    if (!btn || !panel) continue;
+    btn.setAttribute('aria-selected', String(on)); btn.tabIndex = on ? 0 : -1; panel.hidden = !on;
+  }
+  hideTip();
+}
+addEventListener('hashchange', activateTab);
+const tabCount = (key, n) => { const b = document.getElementById(`tab-${key}`); if (b && n != null) { b.querySelector('.n')?.remove(); b.append($('span', { class: 'n', text: String(n) })); } };
+
+/* ---------- price feed panel ---------- */
+async function renderPriceFeed(panel, models) {
+  panel.replaceChildren();
+  const card = $('section', { class: 'card' });
+  card.append($('h2', { text: 'Supplier price feed' }), $('p', { class: 'sub', text: 'Prices observed in supplier lists (WhatsApp forward or manual ingest), resolved to fleet models and compared with the quotes recorded in the sheet.' }));
+  panel.append(card);
+  let d;
+  try { d = await (await fetch('/api/pricefeed?view=all')).json(); if (d.error) throw new Error(d.detail || d.error); }
+  catch (err) { card.append($('div', { class: 'err', text: `Price feed unavailable: ${err.message}` })); return; }
+
+  const storeBadge = $('span', { class: `badge ${d.store.durable ? '' : 'sample'}`, text: d.store.durable ? `store · ${d.store.kind}` : `store · ${d.store.kind} (not durable)` });
+  card.querySelector('h2').after(' ', storeBadge);
+  tabCount('pricefeed', d.observations.length);
+
+  if (!d.latest.length) {
+    card.append($('div', { class: 'empty' }, 'No observations yet. Forward a supplier price list to the WhatsApp Business number, or POST it to ',
+      $('code', { text: 'POST /api/pricefeed' }), ' with the ingest secret. Each line like ', $('code', { text: 'S21+ 235T $1,269 used' }), ' becomes an observation.'));
+    return;
+  }
+  const delta = (o) => o.deltaPct == null ? '—' : `${o.deltaPct > 0 ? '▲' : o.deltaPct < 0 ? '▼' : '='} ${Math.abs(o.deltaPct)}%`;
+  const when = (iso) => iso ? iso.slice(0, 16).replace('T', ' ') : '—';
+  const usd = (m) => m == null ? '—' : usdFull(m);
+  card.append($('h2', { text: 'Latest per model', style: 'margin-top:8px;font-size:13px;color:var(--ink-2)' }));
+  card.append($('div', { class: 'tablewrap' }, table(
+    [{ h: 'Model' }, { h: 'Basis' }, { h: 'Observed', num: true }, { h: 'Sheet quote', num: true }, { h: 'Δ vs sheet', num: true }, { h: 'Confidence' }, { h: 'Source' }, { h: 'Observed at' }],
+    d.latest.map((o) => [displayModel(o.modelLabel), o.basis, usd(o.unitPriceMinor), usd(o.sheetUnitPriceMinor), delta(o), o.confidence, o.source ?? '—', when(o.observedAt)]))));
+
+  const log = $('section', { class: 'card' });
+  log.append($('h2', { text: `All observations · ${d.observations.length}` }), $('p', { class: 'sub', text: 'Every parsed line, newest last. Lines that did not resolve to a fleet model are reported by the ingest call, never guessed.' }));
+  log.append($('div', { class: 'tablewrap' }, table(
+    [{ h: 'Observed at' }, { h: 'Model' }, { h: 'Basis' }, { h: 'Price', num: true }, { h: 'Conf.' }, { h: 'Source' }, { h: 'Raw line' }],
+    d.observations.slice().reverse().map((o) => [when(o.observedAt), displayModel(o.modelLabel), o.basis, usd(o.unitPriceMinor), o.confidence, o.source ?? '—', o.raw]))));
+  panel.append(log);
+}
+
 /* ---------- render ---------- */
 let cached = null;
 async function main() {
@@ -290,7 +373,9 @@ async function main() {
     tile('Rated power', fmtNum(fleet.powerKw / 1000, 2), 'MW', `${fmtNum(fleet.powerKw, 0)} kW rated draw at full fleet`),
     tile('Fleet efficiency', fmtNum(fleet.powerKw * 1000 / fleet.hashrateTh, 1), 'J/TH', 'SHA-256 dominant; one Kaspa model excluded from comparison'),
   );
-  app.replaceChildren(hero);
+  app.replaceChildren();
+  const panels = buildPanels(app);
+  panels.overview.append(hero);
 
   const cov = validation.findings.find((f) => f.id === 'coverage.prices');
   const kpis = $('div', { class: 'kpis' });
@@ -304,33 +389,30 @@ async function main() {
       return tile('Client concentration', pct(top5, 0), 'top 5', `HHI ${fmtNum(hhi * 10000, 0)} · ${clients[0].clientName} alone holds ${pct(clients[0].units / fleet.units, 0)}`);
     })(),
   );
-  app.append(kpis);
+  panels.overview.append(kpis);
 
   /* fleet composition + client concentration */
   const byUnits = [...models].sort((a, b) => b.totalUnits - a.totalUnits);
   const topModels = byUnits.slice(0, 8), restModels = byUnits.slice(8);
   const compRows = topModels.map((m) => ({ label: m.label, values: [m.totalUnits], meta: [`${pct(m.fleetSharePct / 100)} of fleet · ${m.clientCount} clients`, `${m.hashrateTh} TH/s · ${fmtInt(m.powerW)} W · ${m.efficiencyJPerTh} J/TH`] }));
   if (restModels.length) compRows.push({ label: `Other (${restModels.length} models)`, values: [restModels.reduce((a, m) => a + m.totalUnits, 0)], meta: restModels.map((m) => `${m.label}: ${m.totalUnits}`) });
-  const g1 = $('div', { class: 'grid-2' });
-  g1.append(chartCard({
+  panels.fleet.append(chartCard({
     title: 'Fleet composition', sub: 'Units by miner model · top 8, remainder folded',
     svg: hbarChart({ rows: compRows, series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt }),
     table: table([{ h: 'Model' }, { h: 'Units', num: true }, { h: '% fleet', num: true }, { h: 'Clients', num: true }, { h: 'TH/s', num: true }, { h: 'W', num: true }, { h: 'J/TH', num: true }],
       byUnits.map((m) => [displayModel(m.label), fmtInt(m.totalUnits), m.fleetSharePct + '%', m.clientCount, m.hashrateTh, fmtInt(m.powerW), m.efficiencyJPerTh])),
   }));
   const topClients = clients.slice(0, 10);
-  g1.append(chartCard({
+  panels.clients.append(chartCard({
     title: 'Client concentration', sub: 'Units by client · top 10 of ' + clients.length,
     svg: hbarChart({ rows: topClients.map((c) => ({ label: c.clientName, values: [c.units], meta: [`${pct(c.units / fleet.units)} of fleet · ${c.modelCount} model${c.modelCount > 1 ? 's' : ''} · ${fmtNum(c.hashrateTh, 0)} TH/s`, `Used ${usdFull(c.usedValueMinor)} · Fresh ${usdFull(c.freshValueMinor)}`] })), series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt }),
     table: table([{ h: 'Client' }, { h: 'Code' }, { h: 'Units', num: true }, { h: '% fleet', num: true }, { h: 'Models', num: true }, { h: 'TH/s', num: true }, { h: 'Used $', num: true }, { h: 'Fresh $', num: true }],
       clients.map((c) => [c.clientName, c.clientCode ?? '—', fmtInt(c.units), pct(c.units / fleet.units), c.modelCount, fmtNum(c.hashrateTh, 0), usdFull(c.usedValueMinor), usdFull(c.freshValueMinor)])),
   }));
-  app.append(g1);
 
   /* valuation: used vs fresh per model (priced on at least one basis) */
   const priced = byUnits.filter((m) => m.usedFleetValueMinor != null || m.freshFleetValueMinor != null).slice(0, 10);
-  const g2 = $('div', { class: 'grid-2' });
-  g2.append(chartCard({
+  panels.valuation.append(chartCard({
     title: 'Fleet value by model', sub: 'Used vs fresh basis · models with at least one quote · top 10 by units',
     legend: [{ name: 'Used basis', color: 'var(--series-1)' }, { name: 'Fresh basis', color: 'var(--series-2)' }],
     svg: hbarChart({ rows: priced.map((m) => ({ label: m.label, values: [m.usedFleetValueMinor == null ? null : m.usedFleetValueMinor / 100, m.freshFleetValueMinor == null ? null : m.freshFleetValueMinor / 100], meta: [`${fmtInt(m.totalUnits)} units · used ${m.usedUnitPriceMinor == null ? 'N/Q' : usdFull(m.usedUnitPriceMinor)} · fresh ${m.freshUnitPriceMinor == null ? 'N/Q' : usdFull(m.freshUnitPriceMinor)} per unit`, m.usedPriceNote || ''].filter(Boolean) })),
@@ -358,11 +440,9 @@ async function main() {
   const totalTh = engines.reduce((a, e) => a + e.th, 0), totalCost = engines.reduce((a, e) => a + e.costDay, 0);
   econ.append($('p', { class: 'note', style: 'margin:10px 0 0', text: `Sample totals: ${fmtNum(totalTh, 0)} TH/s · $${fmtNum(totalCost, 0)} hosting per day · energy cost per TH/s per day $${(totalCost / totalTh).toFixed(4)}` }));
   econ.append($('p', { class: 'note', style: 'margin:12px 0 0', text: covW ? covW.summary : '' }));
-  g2.append(econ);
-  app.append(g2);
+  panels.economics.append(econ);
 
   /* data quality + not-in-dataset */
-  const g3 = $('div', { class: 'grid-2' });
   const dq = $('section', { class: 'card' });
   dq.append($('h2', { text: 'Data quality' }), $('p', { class: 'sub', text: `${validation.findings.length} rules · ${validation.counts.CRITICAL} critical · ${validation.counts.WARNING} warning · ${validation.counts.INFO} info · never auto-repaired` }));
   const dt = $('table'); const tb = $('tbody');
@@ -370,14 +450,17 @@ async function main() {
     const sev = $('span', { class: `sev ${f.severity}` }, sevIcon(f.severity), f.severity);
     tb.append($('tr', {}, $('td', { style: 'width:100px' }, sev), $('td', {}, $('div', { style: 'color:var(--ink);font-weight:500;font-size:12px;margin-bottom:2px', text: f.id }), $('div', { class: 'note', text: f.summary }))));
   }
-  dt.append(tb); dq.append($('div', { class: 'tablewrap' }, dt)); g3.append(dq);
+  dt.append(tb); dq.append($('div', { class: 'tablewrap' }, dt)); panels.quality.append(dq);
 
   const na = $('section', { class: 'card' });
   na.append($('h2', { text: 'Not derivable from this source' }), $('p', { class: 'sub', text: 'The workbook is a single-date valuation snapshot with no site, status, incident or event-timestamp columns. These need the operational feeds in Milestone 3b.' }));
   const nal = $('div', { class: 'na' }); for (const t of ['Uptime', 'Downtime', 'Incidents', 'Availability', 'Site performance', 'Maintenance', 'Utilisation', 'What changed today', 'Trends']) nal.append($('span', { text: t }));
   na.append(nal);
   na.append($('p', { class: 'note', style: 'margin-top:14px' }, 'Every figure above traces to ', $('a', { href: '/api/dataset', text: '/api/dataset' }), '; findings to ', $('a', { href: '/api/quality', text: '/api/quality' }), '. Prices are supplier quotes, not book value.'));
-  g3.append(na); app.append(g3);
+  panels.quality.append(na);
+  tabCount('fleet', models.length); tabCount('clients', clients.length); tabCount('quality', validation.counts.WARNING + validation.counts.CRITICAL);
+  activateTab();
+  renderPriceFeed(panels.pricefeed, models);
 
   app.append($('footer', {}, $('img', { src: '/brand/segments-cloud-mark.svg', alt: '' }), $('span', { text: 'Segments Cloud Computing · Operations Command Center · Milestone 1' }),
     $('span', { text: `Snapshot captured ${meta.capturedAt ? new Date(meta.capturedAt).toUTCString() : '—'}` }), $('a', { href: '/api/health', text: 'API health' })));
