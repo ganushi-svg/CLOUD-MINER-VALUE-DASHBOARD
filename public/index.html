@@ -3,84 +3,389 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Segments Cloud · Ingestion Status</title>
+<meta name="robots" content="noindex,nofollow">
+<title>Segments Cloud · Operations Command Center</title>
+<link rel="icon" type="image/svg+xml" href="/brand/segments-cloud-mark.svg">
 <style>
-  :root{--navy:#1B3A8F;--blue:#2E6FD6;--gold:#F5A623;--bg:#0B1220;--panel:#131C2E;--line:#243149;--text:#E8EDF7;--muted:#93A2BF;--crit:#F2555A;--warn:#F5A623;--ok:#3DD68C}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1040px;margin:0 auto;padding:32px 20px 64px}
-  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
-  .eyebrow{color:var(--gold);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:600}
-  h1{margin:6px 0 4px;font-size:24px;letter-spacing:-.01em}
-  .sub{color:var(--muted);font-size:13px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-  .k{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-  .v{font-size:22px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
-  .v small{font-size:12px;color:var(--muted);font-weight:400}
-  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:30px 0 10px;font-weight:600}
-  table{width:100%;border-collapse:collapse}
-  td,th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
-  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.06em}
-  .CRITICAL{background:rgba(242,85,90,.16);color:var(--crit)}
-  .WARNING{background:rgba(245,166,35,.16);color:var(--warn)}
-  .INFO{background:rgba(61,214,140,.14);color:var(--ok)}
-  code{background:#0d1526;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#C7D5F0}
-  a{color:var(--blue)}
-  .note{color:var(--muted);font-size:12.5px;margin-top:8px}
-  .err{background:rgba(242,85,90,.1);border:1px solid var(--crit);border-radius:10px;padding:14px 16px;color:#FFD8D9}
+  /* ---- Brand + chart tokens (dark surface; validated with dataviz/validate_palette.js) ---- */
+  :root{
+    color-scheme:dark;
+    --brand-navy:#1B3A8F; --brand-blue:#2E6FD6; --brand-gold:#F5A623;
+    --page:#0A1020; --surface:#111B30; --surface-2:#16233C; --ring:rgba(255,255,255,.08); --ring-2:rgba(255,255,255,.14);
+    --ink:#EEF2FA; --ink-2:#B7C2D9; --muted:#8A97B3; --grid:#1E2A44; --baseline:#2A3752;
+    --series-1:#4A8BF0; --series-2:#C98500; --series-dim:#33415E;
+    --good:#0ca30c; --warn:#fab219; --crit:#d03b3b;
+    --radius:14px; --sans:system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
+  }
+  *{box-sizing:border-box} html{background:var(--page)}
+  body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--series-1);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 24px 56px}
+
+  /* ---- Header ---- */
+  header.top{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,rgba(10,16,32,.96),rgba(10,16,32,.88));backdrop-filter:blur(10px);border-bottom:1px solid var(--ring)}
+  .top .row{max-width:1240px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:14px;min-width:0}
+  .brand img{height:34px;width:auto;display:block}
+  .brand .divider{width:1px;height:28px;background:var(--ring-2)}
+  .brand .product{display:flex;flex-direction:column;line-height:1.15}
+  .brand .eyebrow{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brand-gold);font-weight:700}
+  .brand .name{font-size:15px;font-weight:600;color:var(--ink)}
+  .status{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:12px;border:1px solid var(--ring-2);background:rgba(255,255,255,.03);color:var(--ink-2);white-space:nowrap}
+  .pill b{color:var(--ink);font-weight:600}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .pill.ok .dot{background:var(--good)} .pill.warn .dot{background:var(--warn)} .pill.crit .dot{background:var(--crit)}
+
+  /* ---- Layout ---- */
+  .hero{display:grid;grid-template-columns:minmax(260px,1.2fr) repeat(3,minmax(0,1fr));gap:14px;margin:28px 0 14px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
+  .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;margin-bottom:14px}
+  .card{background:var(--surface);border:1px solid var(--ring);border-radius:var(--radius);padding:18px 20px;min-width:0}
+  .card.hero-card{background:linear-gradient(135deg,#142556 0%,#111B30 60%);border-color:rgba(74,139,240,.25)}
+  .card h2{margin:0 0 2px;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:.01em}
+  .card .sub{margin:0 0 14px;font-size:12px;color:var(--muted)}
+  .card .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .tile .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .tile .value{font-size:26px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
+  .tile .value small{font-size:13px;color:var(--ink-2);font-weight:500;margin-left:4px}
+  .tile .foot{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .hero-card .label{font-size:12px;color:var(--ink-2);margin-bottom:8px}
+  .hero-card .value{font-size:54px;font-weight:600;letter-spacing:-.02em;line-height:1}
+  .hero-card .foot{margin-top:12px;font-size:12px;color:var(--ink-2)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ring-2);color:var(--ink-2)}
+  .badge.sample{border-color:rgba(250,178,25,.4);color:#F6C65A}
+
+  /* ---- Charts ---- */
+  svg.chart{display:block;width:100%;height:auto;overflow:visible}
+  .chart text{font-family:var(--sans);fill:var(--ink-2);font-size:12px}
+  .chart .lbl{fill:var(--ink-2)} .chart .val{fill:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .chart .grid{stroke:var(--grid);stroke-width:1} .chart .base{stroke:var(--baseline);stroke-width:1}
+  .chart .bar{transition:filter .12s} .chart .bar:hover,.chart .bar:focus{filter:brightness(1.18);outline:none}
+  .chart .hit{fill:transparent;cursor:default}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--ink-2);margin:0 0 10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px}
+  .toggle{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--ring-2);border-radius:6px;padding:4px 9px;cursor:pointer;font-family:var(--sans)}
+  .toggle:hover{color:var(--ink);border-color:var(--series-1)}
+  .tip{position:fixed;z-index:20;pointer-events:none;background:#0C1428;border:1px solid var(--ring-2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--ink-2);box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;max-width:280px}
+  .tip b{display:block;color:var(--ink);font-size:14px;font-weight:600}
+  .tip .k{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+  /* ---- Tables ---- */
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+  th{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  .tablewrap{overflow-x:auto}
+  .sev{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.06em}
+  .sev.INFO{background:rgba(12,163,12,.14);color:#5FD35F} .sev.WARNING{background:rgba(250,178,25,.14);color:#F6C65A} .sev.CRITICAL{background:rgba(208,59,59,.16);color:#F07777}
+  .sev svg{width:11px;height:11px}
+
+  .note{font-size:12px;color:var(--muted);line-height:1.55}
+  .na{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .na span{padding:4px 10px;border-radius:999px;border:1px dashed var(--ring-2);color:var(--muted);font-size:12px}
+  footer{margin-top:28px;padding-top:16px;border-top:1px solid var(--ring);display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12px;color:var(--muted);align-items:center}
+  footer img{height:16px;opacity:.75}
+  .err{background:rgba(208,59,59,.1);border:1px solid var(--crit);border-radius:var(--radius);padding:16px 18px;color:#FFD8D9;margin:28px 0}
+  .hidden{display:none!important}
+  @media (max-width:900px){.hero{grid-template-columns:1fr 1fr}.hero-card{grid-column:1/-1}.hero-card .value{font-size:44px}}
+  @media (max-width:560px){.wrap{padding:0 14px 40px}.hero{grid-template-columns:1fr}.grid-2{grid-template-columns:1fr}.brand img{height:28px}.brand .name{font-size:13px}.status{margin-left:0}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="eyebrow">Segments Cloud · AI Operations Command Center</div>
-    <h1>Milestone 1 — Data ingestion &amp; normalization</h1>
-    <div class="sub">Read-only pipeline over <code>Client_Miner_Model_Summary_FULL</code>. This page verifies what was ingested; it is not the operations dashboard (Milestone 5).</div>
-  </header>
-  <div id="app">Loading ingestion status…</div>
-  <h2>API</h2>
-  <table>
-    <tr><td><code>GET /api/health</code></td><td>Liveness, source used, fleet rollup, validation counts.</td></tr>
-    <tr><td><code>GET /api/dataset</code></td><td>Full normalized dataset. <code>?section=models|clients|holdings|workers|summary</code>.</td></tr>
-    <tr><td><code>GET /api/quality</code></td><td>Data-quality findings with severities.</td></tr>
-    <tr><td><code>GET|POST /api/refresh</code></td><td>Force re-ingest, bypassing the warm-instance cache.</td></tr>
-  </table>
-</div>
-<script>
-const usd = (minor) => minor == null ? '—' : '$' + (minor/100).toLocaleString('en-US',{maximumFractionDigits:0});
-const n = (x) => x == null ? '—' : x.toLocaleString('en-US');
-
-fetch('/api/health').then(r => r.json()).then(d => {
-  const app = document.getElementById('app');
-  if (d.error) {
-    app.innerHTML = `<div class="err"><strong>Ingestion unavailable.</strong> ${d.detail ?? ''}</div>`;
-    return;
-  }
-  const f = d.fleet, c = d.counts, v = d.validation;
-  app.innerHTML = `
-    <div class="grid">
-      <div class="card"><div class="k">Source</div><div class="v" style="font-size:16px">${d.source}</div></div>
-      <div class="card"><div class="k">Report date</div><div class="v" style="font-size:16px">${d.reportDate ?? '—'}</div></div>
-      <div class="card"><div class="k">Units</div><div class="v">${n(f.units)}</div></div>
-      <div class="card"><div class="k">Hashrate</div><div class="v">${n(f.hashrateTh)} <small>TH/s</small></div></div>
-      <div class="card"><div class="k">Power</div><div class="v">${n(f.powerKw)} <small>kW</small></div></div>
-      <div class="card"><div class="k">Used value</div><div class="v">${usd(f.usedValueMinor)}</div></div>
-      <div class="card"><div class="k">Fresh value</div><div class="v">${usd(f.freshValueMinor)}</div></div>
-      <div class="card"><div class="k">Records</div><div class="v" style="font-size:15px">${c.models} models · ${c.clients} clients<br>${c.holdings} holdings · ${c.workers} workers</div></div>
+<header class="top">
+  <div class="row">
+    <div class="brand">
+      <img src="/brand/segments-cloud-logo-white.svg" alt="Segments Cloud" width="1003" height="367">
+      <span class="divider" aria-hidden="true"></span>
+      <div class="product"><span class="eyebrow">AI Operations</span><span class="name">Command Center</span></div>
     </div>
-    <div class="note">Valuation totals cover only units with a quoted price; see the price-coverage finding below.</div>
-    <h2>Validation — ${v.ok ? 'no contradictions' : 'FAILED'} (${v.counts.CRITICAL} critical, ${v.counts.WARNING} warning, ${v.counts.INFO} info)</h2>
-    <table id="findings"><thead><tr><th style="width:92px">Severity</th><th style="width:230px">Rule</th><th>Finding</th></tr></thead><tbody></tbody></table>`;
-  return fetch('/api/quality').then(r => r.json()).then(q => {
-    document.querySelector('#findings tbody').innerHTML = q.findings
-      .map(x => `<tr><td><span class="pill ${x.severity}">${x.severity}</span></td><td><code>${x.id}</code></td><td>${x.summary}</td></tr>`)
-      .join('');
+    <div class="status" id="status" aria-live="polite"></div>
+  </div>
+</header>
+
+<main class="wrap" id="app"><p class="note" style="padding:40px 0">Loading operational dataset…</p></main>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (t, attrs = {}, ...kids) => {
+  const el = document.createElement(t);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v; else if (k === 'text') el.textContent = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v);
+  }
+  for (const kid of kids) if (kid != null) el.append(kid);
+  return el;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const s = (t, attrs = {}) => { const el = document.createElementNS(NS, t); for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v); return el; };
+
+const fmtInt = (n) => n == null ? '—' : Math.round(n).toLocaleString('en-US');
+const fmtNum = (n, d = 1) => n == null ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+const usdFull = (minor) => minor == null ? '—' : '$' + (minor / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usdCompact = (minor) => {
+  if (minor == null) return '—';
+  const v = minor / 100;
+  if (v >= 1e6) return '$' + (v / 1e6).toLocaleString('en-US', { maximumFractionDigits: 2 }) + 'M';
+  if (v >= 1e3) return '$' + (v / 1e3).toLocaleString('en-US', { maximumFractionDigits: 1 }) + 'K';
+  return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+};
+const compact = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'K' : fmtNum(n, 1);
+const pct = (x, d = 1) => x == null ? '—' : (x * 100).toFixed(d) + '%';
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById('tip');
+function showTip(e, rows) {
+  tip.replaceChildren();
+  for (const r of rows) {
+    if (r.head) { tip.append($('b', { text: r.head })); continue; }
+    const line = $('div');
+    if (r.color) line.append($('i', { class: 'k', style: `background:${r.color}` }));
+    line.append(document.createTextNode(r.text));
+    tip.append(line);
+  }
+  tip.style.display = 'block';
+  moveTip(e);
+}
+function moveTip(e) {
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+
+/* Vendor prefix carries no information once the registry has resolved the model. */
+const displayModel = (label) => label.replace(/^Bitmain\s+/i, '');
+/* Clean tick steps (1 / 2 / 2.5 / 5 x 10^k) so the axis reads 0, 200, 400 - never 148.5, 297. */
+function niceTicks(max, target = 4) {
+  const raw = max / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((st) => max / st <= target + 0.5) ?? 10 * mag;
+  const ticks = []; for (let v = step; v <= max + step * 0.999; v += step) ticks.push(v);
+  return { ticks, top: ticks.at(-1) };
+}
+const narrow = () => window.innerWidth < 640;
+
+/* ---------- horizontal bar chart (one or two series) ---------- */
+function hbarChart({ rows, series, valueFmt, barH = 18, gap = 10 }) {
+  // rows: [{label, values:[...], meta}], series: [{name,color}]
+  const n = series.length, W = narrow() ? 460 : 720, labelWidth = narrow() ? 130 : 205, maxChars = narrow() ? 18 : 30;
+  const rowH = n * barH + (n - 1) * 2 + gap;
+  const H = rows.length * rowH + 28;
+  const x0 = labelWidth, x1 = W - 72;
+  const dataMax = Math.max(...rows.flatMap((r) => r.values.filter((v) => v != null)), 1);
+  const { ticks, top } = niceTicks(dataMax);
+  const xs = (v) => x0 + (v / top) * (x1 - x0);
+  const svg = s('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, role: 'img' });
+  for (const tv of ticks) {
+    const gx = xs(tv);
+    svg.append(s('line', { class: 'grid', x1: gx, x2: gx, y1: 0, y2: H - 22 }));
+    const t = s('text', { x: gx, y: H - 6, 'text-anchor': 'middle', class: 'lbl' }); t.textContent = compact(tv); svg.append(t);
+  }
+  svg.append(s('line', { class: 'base', x1: x0, x2: x0, y1: 0, y2: H - 22 }));
+  rows.forEach((r, ri) => {
+    const yTop = ri * rowH;
+    const lbl = s('text', { x: x0 - 10, y: yTop + (rowH - gap) / 2 + 4, 'text-anchor': 'end', class: 'lbl' });
+    const shown = displayModel(r.label);
+    lbl.textContent = shown.length > maxChars ? shown.slice(0, maxChars - 1) + '…' : shown; svg.append(lbl);
+    if (shown.length > maxChars) { const tt = s('title'); tt.textContent = r.label; lbl.append(tt); }
+    // Direct-label one series per row: the first that has a value.
+    const labelIdx = r.values.findIndex((v) => v != null);
+    r.values.forEach((v, si) => {
+      const y = yTop + si * (barH + 2);
+      if (v == null) {
+        const na = s('text', { x: x0 + 6, y: y + barH / 2 + 4, class: 'lbl', style: 'fill:var(--muted);font-size:11px' }); na.textContent = 'not quoted'; svg.append(na);
+      } else {
+        const w = Math.max(xs(v) - x0, 0), rr = Math.min(4, w);
+        // 4px rounded data-end, square at the baseline
+        const d = `M${x0},${y} H${x0 + w - rr} a${rr},${rr} 0 0 1 ${rr},${rr} V${y + barH - rr} a${rr},${rr} 0 0 1 -${rr},${rr} H${x0} Z`;
+        svg.append(s('path', { d, fill: series[si].color, class: 'bar' }));
+        if (si === labelIdx) {
+          const vt = s('text', { x: xs(v) + 8, y: y + barH / 2 + 4, class: 'val' }); vt.textContent = valueFmt(v); svg.append(vt);
+        }
+      }
+    });
+    // one hit target per row, larger than the marks
+    const hit = s('rect', { class: 'hit', x: 0, y: yTop, width: W, height: rowH, tabindex: 0 });
+    const tipRows = [{ head: r.label }, ...series.map((sr, si) => ({ color: n > 1 ? sr.color : null, text: `${valueFmt(r.values[si])}${n > 1 ? ' · ' + sr.name : ''}` })), ...(r.meta ? r.meta.map((m) => ({ text: m })) : [])];
+    hit.addEventListener('pointerenter', (e) => showTip(e, tipRows)); hit.addEventListener('pointermove', moveTip); hit.addEventListener('pointerleave', hideTip);
+    hit.addEventListener('focus', (e) => { const b = hit.getBoundingClientRect(); showTip({ clientX: b.left + 200, clientY: b.top + 10 }, tipRows); }); hit.addEventListener('blur', hideTip);
+    svg.append(hit);
   });
-}).catch(e => {
-  document.getElementById('app').innerHTML = `<div class="err"><strong>Could not reach the ingestion API.</strong> ${e.message}</div>`;
-});
+  return svg;
+}
+
+/* ---------- chart card with table twin ---------- */
+function chartCard({ title, sub, badge, legend, svg, table }) {
+  const card = $('section', { class: 'card' });
+  const head = $('div', { class: 'head' });
+  const tl = $('div'); tl.append($('h2', { text: title })); if (badge) tl.append(' ', badge);
+  if (sub) tl.append($('p', { class: 'sub', text: sub }));
+  head.append(tl);
+  const btn = $('button', { class: 'toggle', type: 'button', text: 'Table', 'aria-pressed': 'false' });
+  head.append(btn);
+  card.append(head);
+  if (legend) { const lg = $('div', { class: 'legend' }); for (const l of legend) lg.append($('span', {}, $('i', { style: `background:${l.color}` }), l.name)); card.append(lg); }
+  const chartWrap = $('div'); chartWrap.append(svg);
+  const tableWrap = $('div', { class: 'tablewrap hidden' }); tableWrap.append(table);
+  card.append(chartWrap, tableWrap);
+  btn.addEventListener('click', () => {
+    const showTable = tableWrap.classList.toggle('hidden') === false;
+    chartWrap.classList.toggle('hidden', showTable); btn.textContent = showTable ? 'Chart' : 'Table'; btn.setAttribute('aria-pressed', String(showTable));
+  });
+  return card;
+}
+function table(cols, rows) {
+  const t = $('table');
+  const tr = $('tr'); for (const c of cols) tr.append($('th', { class: c.num ? 'num' : '', text: c.h })); t.append($('thead', {}, tr));
+  const tb = $('tbody');
+  for (const r of rows) { const row = $('tr'); cols.forEach((c, i) => row.append($('td', { class: c.num ? 'num' : '', text: r[i] == null ? '—' : String(r[i]) }))); tb.append(row); }
+  t.append(tb); return t;
+}
+const sevIcon = (sev) => {
+  const p = { INFO: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zm-.7 3.5h1.4v1.2H5.3zm0 2h1.4V9H5.3z', WARNING: 'M6 1l5.5 10h-11zM5.3 5h1.4v2.6H5.3zm0 3.3h1.4v1.2H5.3z', CRITICAL: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zM4.2 3.4L3.4 4.2 5.2 6 3.4 7.8l.8.8L6 6.8l1.8 1.8.8-.8L6.8 6l1.8-1.8-.8-.8L6 5.2z' }[sev];
+  const svg = s('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' }); svg.append(s('path', { d: p, fill: 'currentColor' })); return svg;
+};
+
+/* ---------- render ---------- */
+let cached = null;
+async function main() {
+  const app = document.getElementById('app'), status = document.getElementById('status');
+  let d = cached;
+  if (!d) {
+    try {
+      const r = await fetch('/api/dataset'); d = await r.json();
+      if (d.error) throw new Error(d.detail || d.error);
+      cached = d;
+    } catch (err) {
+      app.replaceChildren($('div', { class: 'err' }, $('strong', { text: 'Operational dataset unavailable. ' }), err.message)); return;
+    }
+  }
+  const { meta, models, clients, holdings, workers, validation, summary } = d;
+  const fleet = summary.fleet;
+
+  /* status pills */
+  status.replaceChildren(
+    $('span', { class: 'pill' }, 'Report date ', $('b', { text: meta.reportDate || '—' })),
+    $('span', { class: 'pill' }, 'Source ', $('b', { text: meta.source === 'fixture' ? 'snapshot' : meta.source.replace('_', ' ') })),
+    $('span', { class: `pill ${validation.ok ? (validation.counts.WARNING ? 'warn' : 'ok') : 'crit'}` }, $('i', { class: 'dot' }),
+      $('b', { text: validation.ok ? 'Data validated' : 'Data contradictions' }), ` · ${validation.counts.WARNING} warnings`),
+  );
+
+  /* hero + KPI tiles */
+  const hero = $('div', { class: 'hero' });
+  hero.append($('section', { class: 'card hero-card tile' },
+    $('div', { class: 'label', text: 'Fleet under management' }),
+    $('div', { class: 'value', text: fmtInt(fleet.units) }),
+    $('div', { class: 'foot', text: `${fmtInt(models.length)} miner models · ${fmtInt(clients.length)} clients · ${fmtInt(holdings.length)} client-model holdings` })));
+  const tile = (label, value, unit, foot) => $('section', { class: 'card tile' }, $('div', { class: 'label', text: label }),
+    $('div', { class: 'value' }, value, unit ? $('small', { text: unit }) : null), foot ? $('div', { class: 'foot', text: foot }) : null);
+  hero.append(
+    tile('Total hashrate', compact(fleet.hashrateTh), 'TH/s', `${fmtNum(fleet.hashrateTh / 1000, 1)} PH/s across ${models.length} models`),
+    tile('Rated power', fmtNum(fleet.powerKw / 1000, 2), 'MW', `${fmtNum(fleet.powerKw, 0)} kW rated draw at full fleet`),
+    tile('Fleet efficiency', fmtNum(fleet.powerKw * 1000 / fleet.hashrateTh, 1), 'J/TH', 'SHA-256 dominant; one Kaspa model excluded from comparison'),
+  );
+  app.replaceChildren(hero);
+
+  const cov = validation.findings.find((f) => f.id === 'coverage.prices');
+  const kpis = $('div', { class: 'kpis' });
+  kpis.append(
+    tile('Fleet value · used basis', usdCompact(fleet.usedValueMinor), null, `Cheapest exact-match quote · ${cov ? cov.modelsUsed.quoted + ' of ' + cov.modelsUsed.total + ' models priced' : ''}`),
+    tile('Fleet value · fresh basis', usdCompact(fleet.freshValueMinor), null, `Latest-dated new-unit quote · ${cov ? cov.modelsFresh.quoted + ' of ' + cov.modelsFresh.total + ' models priced' : ''}`),
+    tile('Fresh over used', pct((fleet.freshValueMinor - fleet.usedValueMinor) / fleet.usedValueMinor), null, 'Replacement premium on priced units only'),
+    (() => {
+      const top5 = clients.slice(0, 5).reduce((a, c) => a + c.units, 0) / fleet.units;
+      const hhi = clients.reduce((a, c) => a + Math.pow(c.units / fleet.units, 2), 0);
+      return tile('Client concentration', pct(top5, 0), 'top 5', `HHI ${fmtNum(hhi * 10000, 0)} · ${clients[0].clientName} alone holds ${pct(clients[0].units / fleet.units, 0)}`);
+    })(),
+  );
+  app.append(kpis);
+
+  /* fleet composition + client concentration */
+  const byUnits = [...models].sort((a, b) => b.totalUnits - a.totalUnits);
+  const topModels = byUnits.slice(0, 8), restModels = byUnits.slice(8);
+  const compRows = topModels.map((m) => ({ label: m.label, values: [m.totalUnits], meta: [`${pct(m.fleetSharePct / 100)} of fleet · ${m.clientCount} clients`, `${m.hashrateTh} TH/s · ${fmtInt(m.powerW)} W · ${m.efficiencyJPerTh} J/TH`] }));
+  if (restModels.length) compRows.push({ label: `Other (${restModels.length} models)`, values: [restModels.reduce((a, m) => a + m.totalUnits, 0)], meta: restModels.map((m) => `${m.label}: ${m.totalUnits}`) });
+  const g1 = $('div', { class: 'grid-2' });
+  g1.append(chartCard({
+    title: 'Fleet composition', sub: 'Units by miner model · top 8, remainder folded',
+    svg: hbarChart({ rows: compRows, series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt }),
+    table: table([{ h: 'Model' }, { h: 'Units', num: true }, { h: '% fleet', num: true }, { h: 'Clients', num: true }, { h: 'TH/s', num: true }, { h: 'W', num: true }, { h: 'J/TH', num: true }],
+      byUnits.map((m) => [displayModel(m.label), fmtInt(m.totalUnits), m.fleetSharePct + '%', m.clientCount, m.hashrateTh, fmtInt(m.powerW), m.efficiencyJPerTh])),
+  }));
+  const topClients = clients.slice(0, 10);
+  g1.append(chartCard({
+    title: 'Client concentration', sub: 'Units by client · top 10 of ' + clients.length,
+    svg: hbarChart({ rows: topClients.map((c) => ({ label: c.clientName, values: [c.units], meta: [`${pct(c.units / fleet.units)} of fleet · ${c.modelCount} model${c.modelCount > 1 ? 's' : ''} · ${fmtNum(c.hashrateTh, 0)} TH/s`, `Used ${usdFull(c.usedValueMinor)} · Fresh ${usdFull(c.freshValueMinor)}`] })), series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt }),
+    table: table([{ h: 'Client' }, { h: 'Code' }, { h: 'Units', num: true }, { h: '% fleet', num: true }, { h: 'Models', num: true }, { h: 'TH/s', num: true }, { h: 'Used $', num: true }, { h: 'Fresh $', num: true }],
+      clients.map((c) => [c.clientName, c.clientCode ?? '—', fmtInt(c.units), pct(c.units / fleet.units), c.modelCount, fmtNum(c.hashrateTh, 0), usdFull(c.usedValueMinor), usdFull(c.freshValueMinor)])),
+  }));
+  app.append(g1);
+
+  /* valuation: used vs fresh per model (priced on at least one basis) */
+  const priced = byUnits.filter((m) => m.usedFleetValueMinor != null || m.freshFleetValueMinor != null).slice(0, 10);
+  const g2 = $('div', { class: 'grid-2' });
+  g2.append(chartCard({
+    title: 'Fleet value by model', sub: 'Used vs fresh basis · models with at least one quote · top 10 by units',
+    legend: [{ name: 'Used basis', color: 'var(--series-1)' }, { name: 'Fresh basis', color: 'var(--series-2)' }],
+    svg: hbarChart({ rows: priced.map((m) => ({ label: m.label, values: [m.usedFleetValueMinor == null ? null : m.usedFleetValueMinor / 100, m.freshFleetValueMinor == null ? null : m.freshFleetValueMinor / 100], meta: [`${fmtInt(m.totalUnits)} units · used ${m.usedUnitPriceMinor == null ? 'N/Q' : usdFull(m.usedUnitPriceMinor)} · fresh ${m.freshUnitPriceMinor == null ? 'N/Q' : usdFull(m.freshUnitPriceMinor)} per unit`, m.usedPriceNote || ''].filter(Boolean) })),
+      series: [{ name: 'Used basis', color: 'var(--series-1)' }, { name: 'Fresh basis', color: 'var(--series-2)' }], valueFmt: (v) => v == null ? 'not quoted' : usdCompact(v * 100), barH: 12, gap: 12 }),
+    table: table([{ h: 'Model' }, { h: 'Units', num: true }, { h: 'Used unit $', num: true }, { h: 'Used total $', num: true }, { h: 'Fresh unit $', num: true }, { h: 'Fresh total $', num: true }, { h: 'Used source' }],
+      byUnits.map((m) => [displayModel(m.label), fmtInt(m.totalUnits), m.usedUnitPriceAvailability === 'QUOTED' ? usdFull(m.usedUnitPriceMinor) : m.usedUnitPriceAvailability.replace('_', ' ').toLowerCase(), usdFull(m.usedFleetValueMinor), m.freshUnitPriceAvailability === 'QUOTED' ? usdFull(m.freshUnitPriceMinor) : m.freshUnitPriceAvailability.replace('_', ' ').toLowerCase(), usdFull(m.freshFleetValueMinor), m.usedPriceNote ?? '—'])),
+  }));
+
+  /* hosting economics — sample only */
+  const engines = ['SEGPOOL', 'CLOUD'].map((eng) => {
+    const ws = workers.filter((w) => w.engine === eng);
+    const rates = ws.map((w) => w.hostingRateMicroUsdPerKwh / 1e6).sort((a, b) => a - b);
+    const med = rates.length ? rates[Math.floor(rates.length / 2)] : null;
+    const kwhDay = ws.reduce((a, w) => a + (w.powerW / 1000) * 24, 0);
+    const costDay = ws.reduce((a, w) => a + (w.powerW / 1000) * 24 * (w.hostingRateMicroUsdPerKwh / 1e6), 0);
+    return { eng, n: ws.length, min: rates[0], max: rates.at(-1), med, kwhDay, costDay, th: ws.reduce((a, w) => a + w.hashrateTh, 0) };
+  });
+  const covW = validation.findings.find((f) => f.id === 'coverage.workers');
+  const econ = $('section', { class: 'card' });
+  const eh = $('div', { class: 'head' }); const et = $('div');
+  et.append($('h2', { text: 'Hosting economics' }), ' ', $('span', { class: 'badge sample', text: `Sample · ${workers.length} of ${fmtInt(meta.claimedWorkers)} workers` }));
+  et.append($('p', { class: 'sub', text: 'Per-worker hosting rates on the report date. Describes the extract, not the fleet.' })); eh.append(et); econ.append(eh);
+  econ.append($('div', { class: 'tablewrap' }, table([{ h: 'Engine' }, { h: 'Workers', num: true }, { h: 'Rate $/kWh', num: true }, { h: 'Median', num: true }, { h: 'kWh/day', num: true }, { h: 'Hosting $/day', num: true }],
+    engines.map((e) => [e.eng, e.n, e.n ? `${e.min.toFixed(3)}–${e.max.toFixed(3)}` : '—', e.med?.toFixed(3), fmtNum(e.kwhDay, 0), '$' + fmtNum(e.costDay, 0)]))));
+  const totalTh = engines.reduce((a, e) => a + e.th, 0), totalCost = engines.reduce((a, e) => a + e.costDay, 0);
+  econ.append($('p', { class: 'note', style: 'margin:10px 0 0', text: `Sample totals: ${fmtNum(totalTh, 0)} TH/s · $${fmtNum(totalCost, 0)} hosting per day · energy cost per TH/s per day $${(totalCost / totalTh).toFixed(4)}` }));
+  econ.append($('p', { class: 'note', style: 'margin:12px 0 0', text: covW ? covW.summary : '' }));
+  g2.append(econ);
+  app.append(g2);
+
+  /* data quality + not-in-dataset */
+  const g3 = $('div', { class: 'grid-2' });
+  const dq = $('section', { class: 'card' });
+  dq.append($('h2', { text: 'Data quality' }), $('p', { class: 'sub', text: `${validation.findings.length} rules · ${validation.counts.CRITICAL} critical · ${validation.counts.WARNING} warning · ${validation.counts.INFO} info · never auto-repaired` }));
+  const dt = $('table'); const tb = $('tbody');
+  for (const f of validation.findings) {
+    const sev = $('span', { class: `sev ${f.severity}` }, sevIcon(f.severity), f.severity);
+    tb.append($('tr', {}, $('td', { style: 'width:100px' }, sev), $('td', {}, $('div', { style: 'color:var(--ink);font-weight:500;font-size:12px;margin-bottom:2px', text: f.id }), $('div', { class: 'note', text: f.summary }))));
+  }
+  dt.append(tb); dq.append($('div', { class: 'tablewrap' }, dt)); g3.append(dq);
+
+  const na = $('section', { class: 'card' });
+  na.append($('h2', { text: 'Not derivable from this source' }), $('p', { class: 'sub', text: 'The workbook is a single-date valuation snapshot with no site, status, incident or event-timestamp columns. These need the operational feeds in Milestone 3b.' }));
+  const nal = $('div', { class: 'na' }); for (const t of ['Uptime', 'Downtime', 'Incidents', 'Availability', 'Site performance', 'Maintenance', 'Utilisation', 'What changed today', 'Trends']) nal.append($('span', { text: t }));
+  na.append(nal);
+  na.append($('p', { class: 'note', style: 'margin-top:14px' }, 'Every figure above traces to ', $('a', { href: '/api/dataset', text: '/api/dataset' }), '; findings to ', $('a', { href: '/api/quality', text: '/api/quality' }), '. Prices are supplier quotes, not book value.'));
+  g3.append(na); app.append(g3);
+
+  app.append($('footer', {}, $('img', { src: '/brand/segments-cloud-mark.svg', alt: '' }), $('span', { text: 'Segments Cloud Computing · Operations Command Center · Milestone 1' }),
+    $('span', { text: `Snapshot captured ${meta.capturedAt ? new Date(meta.capturedAt).toUTCString() : '—'}` }), $('a', { href: '/api/health', text: 'API health' })));
+}
+main();
+let wasNarrow = narrow(), resizeTimer;
+addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (narrow() !== wasNarrow) { wasNarrow = narrow(); hideTip(); main(); } }, 150); });
+})();
 </script>
 </body>
 </html>

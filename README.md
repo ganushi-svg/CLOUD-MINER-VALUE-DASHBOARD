@@ -2,6 +2,8 @@
 
 Read-only operations intelligence over the Segments Cloud fleet dataset.
 
+**Live:** https://segments-ops-center.vercel.app — see [`DEPLOY.md`](DEPLOY.md) before sharing the link.
+
 **Milestone 1 — data ingestion and normalization — is implemented.**
 Milestones 2–10 are specified in [`docs/MILESTONES.md`](docs/MILESTONES.md).
 
@@ -42,6 +44,15 @@ The first two bound what the product can honestly claim: uptime, incidents,
 availability and "what changed today" are **not** answerable from this sheet.
 See `docs/MILESTONES.md` § Milestone 3b for the feeds that unlock them.
 
+## Dashboard
+
+The root URL is a branded command-center overview reading entirely from `/api/dataset`:
+fleet hero and KPI tiles, composition by model, client concentration (top-5 share, HHI),
+used-vs-fresh valuation by model, hosting economics (badged as a 225-worker sample), the
+twelve data-quality findings, and an explicit list of what this source cannot answer.
+Every chart has a table view; chart colours were validated for CVD separation and
+contrast on the dark surface. Sections exist only where the data supports them.
+
 ## Run it
 
 ```bash
@@ -78,5 +89,6 @@ never reach the client.
 
 ## Documentation
 
+- [`DEPLOY.md`](DEPLOY.md) — Vercel project settings and pre-launch exposure check
 - [`docs/MILESTONES.md`](docs/MILESTONES.md) — the ten-milestone plan
 - [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) — every field, its meaning, and what the data cannot answer

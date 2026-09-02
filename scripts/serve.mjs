@@ -22,7 +22,9 @@ const server = createServer(async (req, res) => {
     }
     const file = url.pathname === '/' ? 'public/index.html' : `public${url.pathname}`;
     const body = await readFile(fileURLToPath(new URL(file, root)));
-    res.setHeader('content-type', file.endsWith('.html') ? 'text/html' : 'application/octet-stream');
+    const ext = file.slice(file.lastIndexOf('.') + 1);
+    const MIME = { html: 'text/html; charset=utf-8', svg: 'image/svg+xml', png: 'image/png', css: 'text/css', js: 'text/javascript', json: 'application/json', ico: 'image/x-icon' };
+    res.setHeader('content-type', MIME[ext] ?? 'application/octet-stream');
     res.end(body);
   } catch (err) {
     res.statusCode = 404;
