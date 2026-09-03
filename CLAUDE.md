@@ -14,13 +14,16 @@ branch gets a preview URL. Development branch: `claude/segments-cloud-ops-center
 `src/ingest` (sheet connectors) → `src/normalize` (typed dataset) → `src/validate` (rules, never repairs)
 → `src/events` (severity engine) · `src/pricefeed` (supplier list parser, store, comparison) ·
 `api/*.js` (Vercel functions; `api/whatsapp.js` uses the Web-standard signature) · `public/index.html`
-(single-file tabbed dashboard, no framework) · `data/fixtures/snapshot.js` (verbatim sheet capture).
+(single-file tabbed dashboard, no framework) · `data/fixtures/snapshot.js` (verbatim sheet capture) ·
+`db/ops_pricefeed.sql` (the two Supabase tables behind `PRICEFEED_STORE=supabase`; RLS on, no policies).
 
 ## Non-negotiables
 - Money is integer minor units with explicit currency; never a JS float. Hosting rates are micro-$/kWh.
 - Absence has two meanings: `NOT_QUOTED` (sheet says N/Q) ≠ `MISSING` (blank). Keep the availability flag.
 - Validation reports; it never auto-repairs. Unresolvable price lines are returned, never guessed.
-- Nothing in the app writes to the sheet or to any operational system (read-only by construction).
+- Nothing in the app writes to the source sheet or to any operational system (read-only by
+  construction). The only writes are the app's own records: price observations and event states,
+  in the store selected by `PRICEFEED_STORE` (Supabase tables, a `PriceFeed` tab, or memory).
 - Secrets only via environment variables; never log message bodies or phone numbers.
 - Chart colours must pass the dataviz palette validator on the dark surface (`#4A8BF0`, `#C98500`).
 - Sections and KPIs exist only where the data supports them. `docs/DATA_DICTIONARY.md` lists what the

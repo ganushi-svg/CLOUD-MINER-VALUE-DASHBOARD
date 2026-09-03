@@ -12,6 +12,7 @@ let remoteMain = 'unknown';
 try { remoteMain = sh('git ls-remote --heads origin main').slice(0, 7); } catch {}
 const get = async (u) => { try { const r = await fetch(u, { signal: AbortSignal.timeout(15000) }); return r.ok ? r.json() : { _http: r.status }; } catch (e) { return { _err: e.message }; } };
 const health = await get(`${PROD}/api/health`);
+const feed = await get(`${PROD}/api/pricefeed`);
 const status = await get(`https://api.github.com/repos/${REPO}/commits/${head}/status`);
 const deps = await get(`https://api.github.com/repos/${REPO}/deployments?sha=${head}&per_page=10`);
 console.log(`branch        ${branch} @ ${short}`);
@@ -19,6 +20,7 @@ console.log(`remote main   ${remoteMain}${remoteMain === short ? '  (== HEAD)' :
 console.log(`production    ${health.deploy?.commit ? health.deploy.commit.slice(0, 7) + ' (' + health.deploy.ref + ', ' + health.deploy.env + ')' : 'unreadable: ' + JSON.stringify(health).slice(0, 80)}`);
 console.log(`prod health   ${health.ok === true ? 'ok' : 'NOT OK'}  units=${health.fleet?.units ?? '?'}  validation=${JSON.stringify(health.validation?.counts ?? {})}`);
 console.log(`HEAD is live  ${health.deploy?.commit === head ? 'YES' : 'no'}`);
+console.log(`price store   ${feed.store ? `${feed.store.kind}${feed.store.durable ? ' (durable)' : ' (NOT durable)'}${feed.store.requested ? ' - fell back from ' + feed.store.requested : ''}  latest=${feed.latest?.length ?? 0}` : 'unreadable'}`);
 const vercel = (status.statuses ?? []).filter((s) => s.context.startsWith('Vercel'));
 for (const s of vercel) console.log(`build         ${s.context.replace('Vercel – ', '').padEnd(36)} ${s.state}`);
 for (const d of Array.isArray(deps) ? deps : []) console.log(`deployment    ${String(d.environment).padEnd(45)} ${d.created_at}`);
