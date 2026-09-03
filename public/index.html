@@ -14,7 +14,7 @@
     --page:#0A1020; --surface:#111B30; --surface-2:#16233C; --ring:rgba(255,255,255,.08); --ring-2:rgba(255,255,255,.14);
     --ink:#EEF2FA; --ink-2:#B7C2D9; --muted:#8A97B3; --grid:#1E2A44; --baseline:#2A3752;
     --series-1:#4A8BF0; --series-2:#C98500; --series-dim:#33415E;
-    --good:#0ca30c; --warn:#fab219; --crit:#d03b3b;
+    --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; --recov:#2BB5A0;
     --radius:14px; --sans:system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
   }
   *{box-sizing:border-box} html{background:var(--page)}
@@ -35,7 +35,35 @@
   .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:12px;border:1px solid var(--ring-2);background:rgba(255,255,255,.03);color:var(--ink-2);white-space:nowrap}
   .pill b{color:var(--ink);font-weight:600}
   .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
-  .pill.ok .dot{background:var(--good)} .pill.warn .dot{background:var(--warn)} .pill.crit .dot{background:var(--crit)}
+  .pill.ok .dot{background:var(--good)} .pill.warn .dot{background:var(--warn)} .pill.crit .dot{background:var(--crit)} .pill.recov .dot{background:var(--recov)}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--series-1);outline-offset:2px}
+
+  /* ---- Global filter row (state lives in the hash query: #fleet?client=&model=&algo=) ---- */
+  .filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:16px 0 0}
+  .filters label.f{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);min-width:0;max-width:100%}
+  .filters label.f>span{white-space:nowrap}
+  .filters select{min-width:0;max-width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--ring-2);border-radius:8px;padding:6px 28px 6px 9px;font:500 12.5px var(--sans);cursor:pointer;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+  .filters select:hover{border-color:var(--series-1)}
+  .filters .clear{color:var(--ink);border-color:rgba(245,166,35,.55)}
+  .filters .clear:hover{border-color:var(--brand-gold);color:var(--brand-gold)}
+  .showing{font-size:12px;color:var(--ink-2);padding:5px 10px;border-radius:999px;border:1px solid var(--ring-2);background:rgba(255,255,255,.03);font-variant-numeric:tabular-nums;line-height:1.4}
+  .filters.active .showing{border-color:rgba(245,166,35,.5);color:#F6C65A}
+  .fnote{font-size:12px;color:var(--muted);margin:-8px 0 12px}
+  .fnote::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand-gold);margin-right:7px;vertical-align:middle;opacity:.8}
+
+  /* ---- Client drill-down (#client/<clientKey>) ---- */
+  .crumb{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:12px 14px 11px;font:600 12.5px/1 var(--sans);color:var(--ink);white-space:nowrap}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--ink)} .crumb .sep{color:var(--muted)}
+  .back{display:inline-block;margin:22px 0 -8px;font-size:12.5px}
+  .client-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+  .client-head h1{margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em;line-height:1.15;min-width:0;overflow-wrap:anywhere}
+  .client-meta{margin-top:10px;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  tfoot td{border-top:1px solid var(--baseline);border-bottom:0;font-weight:600;color:var(--ink)}
+  td.dim{color:var(--muted)}
+
+  /* ---- Sparklines (price feed trend column) ---- */
+  svg.spark{display:block;width:96px;height:24px;overflow:visible}
+  .spark-none{color:var(--muted)}
 
   /* ---- Layout ---- */
   .hero{display:grid;grid-template-columns:minmax(260px,1.2fr) repeat(3,minmax(0,1fr));gap:14px;margin:28px 0 14px}
@@ -59,7 +87,10 @@
   .attn .t{color:var(--ink);font-weight:600;font-size:13px}
   .attn .d{color:var(--muted);font-size:12px;margin-top:2px}
   .sev.NORMAL{background:rgba(255,255,255,.06);color:var(--ink-2)}
-  .sev.RECOVERY{background:rgba(74,139,240,.16);color:#8FB8F7}
+  /* RECOVERY: a cleared WARNING/CRITICAL. Calm teal, distinct from NORMAL (grey) and INFO (green). */
+  .sev.RECOVERY{background:rgba(43,181,160,.16);color:#7FE6D3}
+  .attn .row.RECOVERY{box-shadow:inset 3px 0 0 rgba(43,181,160,.6);padding-left:10px}
+  .attn .row.RECOVERY .t{color:#BDEFE5}
   .quiet{color:var(--muted);font-size:12.5px;padding:8px 0}
   .m2m{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:8px 0 14px}
   .m2m .tile{background:var(--surface-2);border-radius:10px;padding:12px 14px}
@@ -116,7 +147,8 @@
   .err{background:rgba(208,59,59,.1);border:1px solid var(--crit);border-radius:var(--radius);padding:16px 18px;color:#FFD8D9;margin:28px 0}
   .hidden{display:none!important}
   @media (max-width:900px){.hero{grid-template-columns:1fr 1fr}.hero-card{grid-column:1/-1}.hero-card .value{font-size:44px}}
-  @media (max-width:560px){.wrap{padding:0 14px 40px}.hero{grid-template-columns:1fr}.grid-2{grid-template-columns:1fr}.brand img{height:28px}.brand .name{font-size:13px}.status{margin-left:0}}
+  @media (max-width:560px){.wrap{padding:0 14px 40px}.hero{grid-template-columns:1fr}.grid-2{grid-template-columns:1fr}.brand img{height:28px}.brand .name{font-size:13px}.status{margin-left:0}
+    .filters label.f{flex:1 1 100%}.filters select{flex:1 1 auto;width:100%}.showing{flex:1 1 100%;white-space:normal}.client-head h1{font-size:22px}}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -266,15 +298,20 @@ function chartCard({ title, sub, badge, legend, svg, table }) {
   });
   return card;
 }
-function table(cols, rows) {
+/* Cells are strings (rendered via textContent) or DOM nodes (a link, a sparkline). `foot` adds a totals row. */
+function table(cols, rows, foot) {
   const t = $('table');
   const tr = $('tr'); for (const c of cols) tr.append($('th', { class: c.num ? 'num' : '', text: c.h })); t.append($('thead', {}, tr));
+  const cell = (c, v) => { const td = $('td', { class: c.num ? 'num' : '' }); if (v instanceof Node) td.append(v); else td.textContent = v == null ? '—' : String(v); return td; };
   const tb = $('tbody');
-  for (const r of rows) { const row = $('tr'); cols.forEach((c, i) => row.append($('td', { class: c.num ? 'num' : '', text: r[i] == null ? '—' : String(r[i]) }))); tb.append(row); }
-  t.append(tb); return t;
+  for (const r of rows) { const row = $('tr'); cols.forEach((c, i) => row.append(cell(c, r[i]))); tb.append(row); }
+  t.append(tb);
+  if (foot) { const row = $('tr'); cols.forEach((c, i) => row.append(cell(c, foot[i] == null ? '' : foot[i]))); t.append($('tfoot', {}, row)); }
+  return t;
 }
 const sevIcon = (sev) => {
-  const p = { NORMAL: 'M2 6.2l2.6 2.6L10 3.4l-.9-.9-4.5 4.5-1.7-1.7z', RECOVERY: 'M6 1a5 5 0 1 1-3.5 1.5L4 4H1V1l1.1 1.1A6.4 6.4 0 0 1 6 1z', INFO: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zm-.7 3.5h1.4v1.2H5.3zm0 2h1.4V9H5.3z', WARNING: 'M6 1l5.5 10h-11zM5.3 5h1.4v2.6H5.3zm0 3.3h1.4v1.2H5.3z', CRITICAL: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zM4.2 3.4L3.4 4.2 5.2 6 3.4 7.8l.8.8L6 6.8l1.8 1.8.8-.8L6.8 6l1.8-1.8-.8-.8L6 5.2z' }[sev];
+  /* RECOVERY: a circular "back to normal" arrow, distinct from the NORMAL check mark. */
+  const p = { NORMAL: 'M2 6.2l2.6 2.6L10 3.4l-.9-.9-4.5 4.5-1.7-1.7z', RECOVERY: 'M6 1.6a4.4 4.4 0 1 0 4.4 4.4H9a3 3 0 1 1-3-3v1.6l2.6-2L6 .6z', INFO: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zm-.7 3.5h1.4v1.2H5.3zm0 2h1.4V9H5.3z', WARNING: 'M6 1l5.5 10h-11zM5.3 5h1.4v2.6H5.3zm0 3.3h1.4v1.2H5.3z', CRITICAL: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zM4.2 3.4L3.4 4.2 5.2 6 3.4 7.8l.8.8L6 6.8l1.8 1.8.8-.8L6.8 6l1.8-1.8-.8-.8L6 5.2z' }[sev];
   const svg = s('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' }); svg.append(s('path', { d: p, fill: 'currentColor' })); return svg;
 };
 
@@ -283,53 +320,96 @@ const TABS = [
   ['overview', 'Overview'], ['fleet', 'Fleet'], ['clients', 'Clients'], ['valuation', 'Valuation'],
   ['economics', 'Economics'], ['quality', 'Data quality'], ['pricefeed', 'Price feed'],
 ];
+/* ---------- routing ----------
+   #<tab>?client=c:144&model=antminer-s21-200t&algo=SHA-256   tab + shareable filter state
+   #client/<clientKey>                                         client drill-down (filter query ignored, but carried) */
+const FILTER_KEYS = ['client', 'model', 'algo'];
+const EMPTY_FILTER = Object.freeze({ client: '', model: '', algo: '' });
+/* Hand-rolled so a literal "+" in a model key (antminer-s21+-235th) survives; URLSearchParams would read it as a space. */
+function parseQuery(qs) {
+  const out = {};
+  for (const part of qs.split('&')) {
+    if (!part) continue;
+    const i = part.indexOf('='), k = i < 0 ? part : part.slice(0, i), v = i < 0 ? '' : part.slice(i + 1);
+    try { out[decodeURIComponent(k)] = decodeURIComponent(v); } catch { out[k] = v; }
+  }
+  return out;
+}
+const encodePart = (v) => encodeURIComponent(v).replace(/%3A/gi, ':').replace(/%2B/gi, '+');
+const filterActive = (f) => FILTER_KEYS.some((k) => f[k]);
+const filterQuery = (f) => FILTER_KEYS.filter((k) => f[k]).map((k) => `${k}=${encodePart(f[k])}`).join('&');
+const hashFor = (path, f = EMPTY_FILTER) => { const q = filterQuery(f); return '#' + path + (q ? '?' + q : ''); };
+function parseHash() {
+  const raw = location.hash.slice(1), qi = raw.indexOf('?');
+  const path = qi < 0 ? raw : raw.slice(0, qi), q = parseQuery(qi < 0 ? '' : raw.slice(qi + 1));
+  const filter = { client: q.client || '', model: q.model || '', algo: q.algo || '' };
+  if (path.startsWith('client/')) { let clientKey = path.slice(7); try { clientKey = decodeURIComponent(clientKey); } catch { /* keep raw */ } return { route: 'client', clientKey, filter }; }
+  return { route: 'tab', tab: TABS.some(([k]) => k === path) ? path : 'overview', filter };
+}
+const routeSig = (r) => r.route === 'client' ? `client|${r.clientKey}` : `tab|${filterQuery(r.filter)}`;
+
 function buildPanels(app) {
   const nav = document.getElementById('tabs'); nav.replaceChildren();
   const panels = {};
   for (const [key, label] of TABS) {
     const btn = $('button', { class: 'tab', role: 'tab', type: 'button', id: `tab-${key}`, 'aria-controls': `panel-${key}`, 'aria-selected': 'false', tabindex: '-1', text: label });
-    btn.addEventListener('click', () => { location.hash = key; });
+    btn.addEventListener('click', () => { location.hash = hashFor(key, parseHash().filter); });
     btn.addEventListener('keydown', (e) => {
       const i = TABS.findIndex(([k]) => k === key);
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const j = (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length; location.hash = TABS[j][0]; document.getElementById(`tab-${TABS[j][0]}`).focus(); }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const j = (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length; location.hash = hashFor(TABS[j][0], parseHash().filter); document.getElementById(`tab-${TABS[j][0]}`).focus(); }
     });
     nav.append(btn);
+    if (!app) continue; // client route: tab bar only, no panels
     panels[key] = $('section', { class: 'panel', role: 'tabpanel', id: `panel-${key}`, 'aria-labelledby': `tab-${key}`, hidden: '' });
     app.append(panels[key]);
   }
   return panels;
 }
+/* Tab key comes from the hash path before any "?"; on a client route no tab is selected. */
 function activateTab() {
-  const key = TABS.some(([k]) => k === location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
+  const r = parseHash(), key = r.route === 'tab' ? r.tab : null;
   for (const [k] of TABS) {
     const on = k === key;
     const btn = document.getElementById(`tab-${k}`), panel = document.getElementById(`panel-${k}`);
-    if (!btn || !panel) continue;
-    btn.setAttribute('aria-selected', String(on)); btn.tabIndex = on ? 0 : -1; panel.hidden = !on;
+    if (!btn) continue;
+    btn.setAttribute('aria-selected', String(on)); btn.tabIndex = on || (key == null && k === TABS[0][0]) ? 0 : -1;
+    if (panel) panel.hidden = !on;
   }
   hideTip();
 }
-addEventListener('hashchange', activateTab);
+let renderedSig = null;
+/* Same route + same filter: just switch the visible panel. Anything else re-renders from the cached dataset. */
+addEventListener('hashchange', () => { if (routeSig(parseHash()) !== renderedSig) main(); else activateTab(); });
 const tabCount = (key, n) => { const b = document.getElementById(`tab-${key}`); if (b && n != null) { b.querySelector('.n')?.remove(); b.append($('span', { class: 'n', text: String(n) })); } };
 
 /* ---------- attention strip (operational events) ---------- */
-async function renderAttention(panel, before) {
+async function renderAttention(panel, before, filtered) {
   const card = $('section', { class: 'card attn' });
   card.append($('h2', { text: 'Attention' }), $('p', { class: 'sub', text: 'Operational events computed from the data. Later milestones drive alerts and the mascot from this severity model.' }));
+  if (filtered) card.append($('p', { class: 'fnote', text: 'Attention is fleet-wide; filters do not apply.' }));
   panel.insertBefore(card, before);
   let ev;
   try { ev = await (await fetch('/api/events')).json(); if (ev.error) throw new Error(ev.detail || ev.error); }
   catch (err) { card.append($('div', { class: 'quiet', text: `Events unavailable: ${err.message}` })); return; }
+  const counts = { CRITICAL: 0, WARNING: 0, RECOVERY: 0, INFO: 0, NORMAL: 0, ...(ev.counts ?? {}) };
+  const recovered = counts.RECOVERY > 0 ? `${counts.RECOVERY} recovered` : null;
   const status = document.getElementById('status');
-  const pill = status.querySelector('.pill.ok, .pill.warn, .pill.crit');
+  const pill = status.querySelector('.pill.ok, .pill.warn, .pill.crit, .pill.recov');
   if (pill) {
-    pill.className = 'pill ' + (ev.overall === 'CRITICAL' ? 'crit' : ev.overall === 'WARNING' ? 'warn' : 'ok');
-    pill.replaceChildren($('i', { class: 'dot' }), $('b', { text: ev.overall === 'NORMAL' ? 'All normal' : ev.overall === 'INFO' ? 'Nothing urgent' : `${ev.counts.CRITICAL} critical · ${ev.counts.WARNING} warning` }));
+    pill.className = 'pill ' + (ev.overall === 'CRITICAL' ? 'crit' : ev.overall === 'WARNING' ? 'warn' : ev.overall === 'RECOVERY' ? 'recov' : 'ok');
+    const label = ev.overall === 'NORMAL' ? 'All normal' : ev.overall === 'INFO' ? 'Nothing urgent' : ev.overall === 'RECOVERY' ? recovered
+      : [`${counts.CRITICAL} critical`, `${counts.WARNING} warning`, recovered].filter(Boolean).join(' · ');
+    pill.replaceChildren($('i', { class: 'dot' }), $('b', { text: label }));
+  }
+  if (ev.stateStore) {
+    const ss = ev.stateStore;
+    card.querySelector('h2').after(' ', $('span', { class: `badge ${ss.durable ? '' : 'sample'}`, text: ss.durable ? `state · ${ss.kind}` : `state · ${ss.kind} (not durable)` }));
   }
   const show = ev.events.filter((e) => e.severity !== 'NORMAL');
   if (!show.length) { card.append($('div', { class: 'quiet', text: `All ${ev.events.length} checks normal.` })); return; }
+  card.append($('div', { class: 'quiet', style: 'padding-top:0', text: [`${counts.CRITICAL} critical`, `${counts.WARNING} warning`, recovered, `${counts.INFO} info`].filter(Boolean).join(' · ') }));
   for (const e of show) {
-    card.append($('div', { class: 'row' }, $('span', { class: `sev ${e.severity}` }, sevIcon(e.severity), e.severity),
+    card.append($('div', { class: `row ${e.severity}` }, $('span', { class: `sev ${e.severity}` }, sevIcon(e.severity), e.severity),
       $('div', {}, $('div', { class: 't', text: e.title }), $('div', { class: 'd', text: e.detail }))));
   }
   const normal = ev.events.length - show.length;
@@ -338,61 +418,308 @@ async function renderAttention(panel, before) {
 }
 
 /* ---------- price feed panel ---------- */
-async function renderPriceFeed(panel, models) {
+const usdOr = (m) => m == null ? '—' : usdFull(m);
+const signedUsd = (m, f = usdFull) => m == null ? '—' : (m >= 0 ? '+' : '-') + f(Math.abs(m));
+const when = (iso) => iso ? iso.slice(0, 16).replace('T', ' ') : '—';
+const clientLink = (key, name) => $('a', { href: '#client/' + encodePart(key), text: name });
+
+/* Price history for one model+basis, oldest first. Prefers the feed's `history` series; until that
+   ships, rebuilds the series from the observation log so the column degrades to the same picture. */
+function historyFor(feed, modelKey, basis) {
+  const byTime = (a, b) => (a.observedAt < b.observedAt ? -1 : a.observedAt > b.observedAt ? 1 : 0);
+  if (Array.isArray(feed.history)) {
+    const h = feed.history.find((x) => x.modelKey === modelKey && x.basis === basis);
+    return (h?.points ?? []).filter((p) => p.unitPriceMinor != null).slice().sort(byTime);
+  }
+  return (feed.observations ?? []).filter((o) => o.modelKey === modelKey && o.basis === basis && o.unitPriceMinor != null)
+    .map((o) => ({ observedAt: o.observedAt, unitPriceMinor: o.unitPriceMinor, source: o.source })).sort(byTime);
+}
+/* Inline sparkline: series-1 line, faint area, last point dotted. "—" with fewer than two points. */
+function sparkline(points, w = 96, h = 24) {
+  if (points.length < 2) return $('span', { class: 'spark-none', text: '—', title: points.length === 1 ? '1 observation' : 'no observations' });
+  const vals = points.map((p) => p.unitPriceMinor), min = Math.min(...vals), max = Math.max(...vals), span = max - min, pad = 3;
+  const x = (i) => pad + (i / (points.length - 1)) * (w - 2 * pad);
+  const y = (v) => span ? h - pad - ((v - min) / span) * (h - 2 * pad) : h / 2;
+  const summary = `min ${usdFull(min)} · max ${usdFull(max)} · ${points.length} observations`;
+  const svg = s('svg', { class: 'spark', viewBox: `0 0 ${w} ${h}`, width: w, height: h, role: 'img', 'aria-label': `Price trend: ${summary}` });
+  const title = s('title'); title.textContent = summary; svg.append(title);
+  const pts = points.map((p, i) => [x(i).toFixed(1), y(p.unitPriceMinor).toFixed(1)]);
+  svg.append(s('path', { d: `M${pts[0][0]},${h - pad} ` + pts.map(([px, py]) => `L${px},${py}`).join(' ') + ` L${pts.at(-1)[0]},${h - pad} Z`, fill: 'var(--series-1)', 'fill-opacity': '0.14', stroke: 'none' }));
+  svg.append(s('polyline', { points: pts.map((p) => p.join(',')).join(' '), fill: 'none', stroke: 'var(--series-1)', 'stroke-width': '1.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  svg.append(s('circle', { cx: pts.at(-1)[0], cy: pts.at(-1)[1], r: '2.5', fill: 'var(--series-1)' }));
+  return svg;
+}
+
+/* Client-side twin of the server's markToMarket, run over a (possibly filtered) view.
+   One observation per model: prefer USED, then UNKNOWN, then FRESH; newest within a basis.
+   Exposure = units x (observed - sheet); only models with a comparable sheet quote enter the totals. */
+function computeMarkToMarket(latest, view) {
+  const refFor = (o, m) => (o.basis === 'FRESH' ? m?.freshUnitPriceMinor : m?.usedUnitPriceMinor) ?? null;
+  const byModel = new Map(view.models.map((m) => [m.modelKey, m]));
+  const rank = { USED: 0, UNKNOWN: 1, FRESH: 2 };
+  const pick = new Map();
+  for (const o of latest ?? []) {
+    const prev = pick.get(o.modelKey), ro = rank[o.basis] ?? 3, rp = prev ? (rank[prev.basis] ?? 3) : null;
+    if (!prev || ro < rp || (ro === rp && String(o.observedAt) > String(prev.observedAt))) pick.set(o.modelKey, o);
+  }
+  const rows = [];
+  for (const [modelKey, o] of pick) {
+    const m = byModel.get(modelKey);
+    if (!m) continue;
+    const sheet = refFor(o, m), units = m.totalUnits ?? 0;
+    rows.push({ modelKey, label: m.label, units, basis: o.basis, observedAt: o.observedAt, source: o.source,
+      observedUnitMinor: o.unitPriceMinor, sheetUnitMinor: sheet, deltaUnitMinor: sheet == null ? null : o.unitPriceMinor - sheet,
+      observedValueMinor: units * o.unitPriceMinor, sheetValueMinor: sheet == null ? null : units * sheet, exposureMinor: sheet == null ? null : units * (o.unitPriceMinor - sheet) });
+  }
+  const comparable = rows.filter((r) => r.sheetValueMinor != null);
+  const observedValueMinor = comparable.reduce((a, r) => a + r.observedValueMinor, 0), sheetValueMinor = comparable.reduce((a, r) => a + r.sheetValueMinor, 0);
+  const deltaByModel = new Map(comparable.map((r) => [r.modelKey, r.deltaUnitMinor]));
+  const clients = new Map();
+  for (const h of view.holdings) {
+    const dlt = deltaByModel.get(h.modelKey);
+    if (dlt == null) continue;
+    const c = clients.get(h.clientKey) ?? { clientKey: h.clientKey, clientName: h.clientName, units: 0, exposureMinor: 0 };
+    c.units += h.units ?? 0; c.exposureMinor += (h.units ?? 0) * dlt; clients.set(h.clientKey, c);
+  }
+  return {
+    models: rows.sort((a, b) => Math.abs(b.exposureMinor ?? 0) - Math.abs(a.exposureMinor ?? 0)),
+    totals: { modelsObserved: rows.length, modelsComparable: comparable.length, coveredUnits: comparable.reduce((a, r) => a + r.units, 0),
+      fleetUnits: view.models.reduce((a, m) => a + (m.totalUnits ?? 0), 0), observedValueMinor, sheetValueMinor, deltaMinor: observedValueMinor - sheetValueMinor,
+      deltaPct: sheetValueMinor ? Number((((observedValueMinor - sheetValueMinor) / sheetValueMinor) * 100).toFixed(1)) : null },
+    clients: [...clients.values()].sort((a, b) => Math.abs(b.exposureMinor) - Math.abs(a.exposureMinor)),
+  };
+}
+
+async function renderPriceFeed(panel, d, view, filtered) {
   panel.replaceChildren();
   const card = $('section', { class: 'card' });
   card.append($('h2', { text: 'Supplier price feed' }), $('p', { class: 'sub', text: 'Prices observed in supplier lists (WhatsApp forward or manual ingest), resolved to fleet models and compared with the quotes recorded in the sheet.' }));
   panel.append(card);
-  let d;
-  try { d = await (await fetch('/api/pricefeed?view=all')).json(); if (d.error) throw new Error(d.detail || d.error); }
+  let feed;
+  try { feed = await (await fetch('/api/pricefeed?view=all')).json(); if (feed.error) throw new Error(feed.detail || feed.error); }
   catch (err) { card.append($('div', { class: 'err', text: `Price feed unavailable: ${err.message}` })); return; }
+  feed.latest = feed.latest ?? []; feed.observations = feed.observations ?? [];
 
-  const storeBadge = $('span', { class: `badge ${d.store.durable ? '' : 'sample'}`, text: d.store.durable ? `store · ${d.store.kind}` : `store · ${d.store.kind} (not durable)` });
-  card.querySelector('h2').after(' ', storeBadge);
-  tabCount('pricefeed', d.observations.length);
+  if (feed.store) {
+    const storeBadge = $('span', { class: `badge ${feed.store.durable ? '' : 'sample'}`, text: feed.store.durable ? `store · ${feed.store.kind}` : `store · ${feed.store.kind} (not durable)` });
+    card.querySelector('h2').after(' ', storeBadge);
+  }
+  tabCount('pricefeed', feed.observations.length);
 
-  if (!d.latest.length) {
+  if (!feed.latest.length) {
     card.append($('div', { class: 'empty' }, 'No observations yet. Forward a supplier price list to the WhatsApp Business number, or POST it to ',
       $('code', { text: 'POST /api/pricefeed' }), ' with the ingest secret. Each line like ', $('code', { text: 'S21+ 235T $1,269 used' }), ' becomes an observation.'));
     return;
   }
   const delta = (o) => o.deltaPct == null ? '—' : `${o.deltaPct > 0 ? '▲' : o.deltaPct < 0 ? '▼' : '='} ${Math.abs(o.deltaPct)}%`;
-  const when = (iso) => iso ? iso.slice(0, 16).replace('T', ' ') : '—';
-  const usd = (m) => m == null ? '—' : usdFull(m);
   card.append($('h2', { text: 'Latest per model', style: 'margin-top:8px;font-size:13px;color:var(--ink-2)' }));
   card.append($('div', { class: 'tablewrap' }, table(
-    [{ h: 'Model' }, { h: 'Basis' }, { h: 'Observed', num: true }, { h: 'Sheet quote', num: true }, { h: 'Δ vs sheet', num: true }, { h: 'Confidence' }, { h: 'Source' }, { h: 'Observed at' }],
-    d.latest.map((o) => [displayModel(o.modelLabel), o.basis, usd(o.unitPriceMinor), usd(o.sheetUnitPriceMinor), delta(o), o.confidence, o.source ?? '—', when(o.observedAt)]))));
+    [{ h: 'Model' }, { h: 'Basis' }, { h: 'Observed', num: true }, { h: 'Sheet quote', num: true }, { h: 'Δ vs sheet', num: true }, { h: 'Trend' }, { h: 'Confidence' }, { h: 'Source' }, { h: 'Observed at' }],
+    feed.latest.map((o) => [displayModel(o.modelLabel), o.basis, usdOr(o.unitPriceMinor), usdOr(o.sheetUnitPriceMinor), delta(o), sparkline(historyFor(feed, o.modelKey, o.basis)), o.confidence, o.source ?? '—', when(o.observedAt)]))));
 
-  if (d.markToMarket && d.markToMarket.totals.modelsComparable) {
-    const m = d.markToMarket, t = m.totals;
+  /* Unfiltered: the server's figures verbatim. Filtered: the same rule over the filtered holdings. */
+  const m = filtered ? computeMarkToMarket(feed.latest, view) : (feed.markToMarket ?? computeMarkToMarket(feed.latest, view));
+  if (m && m.totals.modelsComparable) {
+    const t = m.totals;
     const mm = $('section', { class: 'card' });
-    mm.append($('h2', { text: 'Mark-to-market' }), $('p', { class: 'sub', text: `Fleet re-valued at the latest observed price per model. Covers ${fmtInt(t.coveredUnits)} of ${fmtInt(t.fleetUnits)} units (${t.modelsComparable} of ${t.modelsObserved} observed models have a comparable sheet quote).` }));
+    mm.append($('h2', { text: 'Mark-to-market' }), $('p', { class: 'sub', text: `${filtered ? 'Filtered holdings' : 'Fleet'} re-valued at the latest observed price per model. Covers ${fmtInt(t.coveredUnits)} of ${fmtInt(t.fleetUnits)} units (${t.modelsComparable} of ${t.modelsObserved} observed models have a comparable sheet quote).` }));
     const grid = $('div', { class: 'm2m' });
     const tl = (label, value, foot) => $('div', { class: 'tile' }, $('div', { class: 'label', text: label }), $('div', { class: 'value', text: value }), foot ? $('div', { class: 'foot', text: foot }) : null);
     grid.append(tl('At sheet quotes', usdCompact(t.sheetValueMinor), 'covered units only'), tl('At observed prices', usdCompact(t.observedValueMinor), 'covered units only'),
-      tl('Difference', (t.deltaMinor >= 0 ? '+' : '-') + usdCompact(Math.abs(t.deltaMinor)), t.deltaPct == null ? '' : `${t.deltaPct > 0 ? '+' : ''}${t.deltaPct}% vs sheet`));
+      tl('Difference', signedUsd(t.deltaMinor, usdCompact), t.deltaPct == null ? '' : `${t.deltaPct > 0 ? '+' : ''}${t.deltaPct}% vs sheet`));
     mm.append(grid);
     mm.append($('div', { class: 'tablewrap' }, table(
       [{ h: 'Model' }, { h: 'Units', num: true }, { h: 'Basis' }, { h: 'Sheet / unit', num: true }, { h: 'Observed / unit', num: true }, { h: 'Δ / unit', num: true }, { h: 'Exposure', num: true }],
-      m.models.map((r) => [displayModel(r.label), fmtInt(r.units), r.basis, usd(r.sheetUnitMinor), usd(r.observedUnitMinor), r.deltaUnitMinor == null ? '—' : (r.deltaUnitMinor >= 0 ? '+' : '-') + usd(Math.abs(r.deltaUnitMinor)), r.exposureMinor == null ? '—' : (r.exposureMinor >= 0 ? '+' : '-') + usd(Math.abs(r.exposureMinor))]))));
-    if (m.clients.length) {
+      m.models.map((r) => [displayModel(r.label), fmtInt(r.units), r.basis, usdOr(r.sheetUnitMinor), usdOr(r.observedUnitMinor), signedUsd(r.deltaUnitMinor), signedUsd(r.exposureMinor)]))));
+    const exposed = (m.clients ?? []).slice(0, 8);
+    if (exposed.length) {
       mm.append($('h2', { text: 'Clients most exposed', style: 'margin-top:14px;font-size:13px;color:var(--ink-2)' }));
+      if (m.clients.length > exposed.length) mm.append($('p', { class: 'sub', text: `Top ${exposed.length} of ${m.clients.length} clients holding observed models.` }));
       mm.append($('div', { class: 'tablewrap' }, table([{ h: 'Client' }, { h: 'Units on observed models', num: true }, { h: 'Value change', num: true }],
-        m.clients.map((c) => [c.clientName, fmtInt(c.units), (c.exposureMinor >= 0 ? '+' : '-') + usd(Math.abs(c.exposureMinor))]))));
+        exposed.map((c) => [clientLink(c.clientKey, c.clientName), fmtInt(c.units), signedUsd(c.exposureMinor)]))));
     }
     panel.append(mm);
+  } else if (filtered) {
+    panel.append($('section', { class: 'card' }, $('h2', { text: 'Mark-to-market' }), $('div', { class: 'quiet', text: 'No observed model with a comparable sheet quote within the current filters.' })));
   }
   const log = $('section', { class: 'card' });
-  log.append($('h2', { text: `All observations · ${d.observations.length}` }), $('p', { class: 'sub', text: 'Every parsed line, newest last. Lines that did not resolve to a fleet model are reported by the ingest call, never guessed.' }));
+  log.append($('h2', { text: `All observations · ${feed.observations.length}` }), $('p', { class: 'sub', text: 'Every parsed line, newest last. Lines that did not resolve to a fleet model are reported by the ingest call, never guessed.' }));
   log.append($('div', { class: 'tablewrap' }, table(
     [{ h: 'Observed at' }, { h: 'Model' }, { h: 'Basis' }, { h: 'Price', num: true }, { h: 'Conf.' }, { h: 'Source' }, { h: 'Raw line' }],
-    d.observations.slice().reverse().map((o) => [when(o.observedAt), displayModel(o.modelLabel), o.basis, usd(o.unitPriceMinor), o.confidence, o.source ?? '—', o.raw]))));
+    feed.observations.slice().reverse().map((o) => [when(o.observedAt), displayModel(o.modelLabel), o.basis, usdOr(o.unitPriceMinor), o.confidence, o.source ?? '—', o.raw]))));
   panel.append(log);
+}
+
+/* ---------- filtered view ---------- */
+const round1 = (x) => Math.round(x * 10) / 10;
+const sumBy = (arr, f) => arr.reduce((a, x) => a + (f(x) ?? 0), 0);
+/* Recompute models, clients, workers and summary.fleet from the FILTERED holdings using the server's own
+   rules (checked against /api/dataset: every per-model and per-client figure reproduces exactly).
+   With no filter active the server's object is returned untouched, so the unfiltered page equals the API. */
+function deriveView(d, filter) {
+  if (!filterActive(filter)) return d;
+  const modelByKey = new Map(d.models.map((m) => [m.modelKey, m]));
+  const keep = (r) => (!filter.client || r.clientKey === filter.client) && (!filter.model || r.modelKey === filter.model)
+    && (!filter.algo || modelByKey.get(r.modelKey)?.algorithm === filter.algo);
+  const holdings = d.holdings.filter(keep), workers = d.workers.filter(keep);
+  const totalUnits = sumBy(holdings, (h) => h.units);
+  const models = [];
+  for (const m of d.models) {
+    const hs = holdings.filter((h) => h.modelKey === m.modelKey);
+    if (!hs.length) continue;
+    const units = sumBy(hs, (h) => h.units);
+    models.push({ ...m, totalUnits: units, clientCount: new Set(hs.map((h) => h.clientKey)).size,
+      totalHashrateTh: units * m.hashrateTh, totalPowerKw: round1((units * m.powerW) / 1000), fleetSharePct: totalUnits ? round1((units / totalUnits) * 100) : 0,
+      usedFleetValueMinor: m.usedUnitPriceAvailability === 'QUOTED' && m.usedUnitPriceMinor != null ? m.usedUnitPriceMinor * units : null,
+      freshFleetValueMinor: m.freshUnitPriceAvailability === 'QUOTED' && m.freshUnitPriceMinor != null ? m.freshUnitPriceMinor * units : null });
+  }
+  models.sort((a, b) => b.totalUnits - a.totalUnits);
+  const clients = [];
+  for (const c of d.clients) {
+    const hs = holdings.filter((h) => h.clientKey === c.clientKey);
+    if (!hs.length) continue;
+    clients.push({ ...c, units: sumBy(hs, (h) => h.units), modelCount: new Set(hs.map((h) => h.modelKey)).size,
+      hashrateTh: sumBy(hs, (h) => (h.units ?? 0) * (h.hashrateTh ?? 0)), usedValueMinor: sumBy(hs, (h) => h.usedTotalMinor), freshValueMinor: sumBy(hs, (h) => h.freshTotalMinor) });
+  }
+  clients.sort((a, b) => b.units - a.units);
+  const sha = models.filter((m) => m.algorithm === 'SHA-256');
+  const shaW = sumBy(sha, (m) => m.totalUnits * m.powerW), shaT = sumBy(sha, (m) => m.totalUnits * m.hashrateTh);
+  const algorithms = {}; for (const m of models) { const a = m.algorithm ?? 'unknown'; algorithms[a] = (algorithms[a] ?? 0) + 1; }
+  const fleet = { units: totalUnits, hashrateTh: sumBy(models, (m) => m.totalHashrateTh), powerKw: round1(sumBy(models, (m) => m.totalPowerKw)),
+    usedValueMinor: sumBy(models, (m) => m.usedFleetValueMinor), freshValueMinor: sumBy(models, (m) => m.freshFleetValueMinor),
+    sha256: { models: sha.length, hashrateTh: shaT, powerKw: round1(sumBy(sha, (m) => m.totalPowerKw)), efficiencyJPerTh: shaT ? Math.round((shaW / shaT) * 100) / 100 : null }, algorithms };
+  return { ...d, models, clients, holdings, workers, summary: { ...d.summary, counts: { models: models.length, clients: clients.length, holdings: holdings.length, workers: workers.length }, fleet } };
+}
+/* Keys the dataset does not know are dropped, rather than rendering a silently empty page. */
+const sanitizeFilter = (f, d) => ({
+  client: d.clients.some((c) => c.clientKey === f.client) ? f.client : '',
+  model: d.models.some((m) => m.modelKey === f.model) ? f.model : '',
+  algo: d.models.some((m) => m.algorithm === f.algo) ? f.algo : '',
+});
+
+/* ---------- global filter row ---------- */
+function renderFilters(app, d, view, filter, tab) {
+  const active = filterActive(filter);
+  const row = $('div', { class: `filters${active ? ' active' : ''}`, role: 'group', 'aria-label': 'Filters' });
+  const sel = (key, label, options) => {
+    const select = $('select', { id: `filter-${key}` });
+    for (const [v, text] of options) { const o = $('option', { value: v, text }); if (v === filter[key]) o.selected = true; select.append(o); }
+    select.addEventListener('change', () => { location.hash = hashFor(tab, { ...filter, [key]: select.value }); });
+    return $('label', { class: 'f', for: `filter-${key}` }, $('span', { text: label }), select);
+  };
+  const clientsByUnits = [...d.clients].sort((a, b) => b.units - a.units);
+  const modelsByUnits = [...d.models].sort((a, b) => b.totalUnits - a.totalUnits);
+  const algoCounts = new Map(); for (const m of d.models) if (m.algorithm) algoCounts.set(m.algorithm, (algoCounts.get(m.algorithm) ?? 0) + 1);
+  row.append(
+    sel('client', 'Client', [['', 'All clients'], ...clientsByUnits.map((c) => [c.clientKey, `${c.clientName} · ${fmtInt(c.units)} units`])]),
+    sel('model', 'Model', [['', 'All models'], ...modelsByUnits.map((m) => [m.modelKey, displayModel(m.label)])]),
+    sel('algo', 'Algorithm', [['', 'All algorithms'], ...[...algoCounts].sort((a, b) => b[1] - a[1]).map(([a, n]) => [a, `${a} · ${n} model${n === 1 ? '' : 's'}`])]),
+  );
+  if (active) row.append($('button', { class: 'toggle clear', type: 'button', text: 'Clear filters', onclick: () => { location.hash = hashFor(tab); } }));
+  const all = d.summary.fleet, f = view.summary.fleet;
+  row.append($('span', { class: 'showing', 'aria-live': 'polite', text: active
+    ? `Showing ${fmtInt(f.units)} of ${fmtInt(all.units)} units · ${fmtInt(view.models.length)} of ${fmtInt(d.models.length)} models · ${fmtInt(view.clients.length)} of ${fmtInt(d.clients.length)} clients`
+    : `Showing all ${fmtInt(all.units)} units · ${fmtInt(d.models.length)} models · ${fmtInt(d.clients.length)} clients` }));
+  app.append(row);
+}
+
+/* ---------- shared chrome ---------- */
+function renderStatus(status, d) {
+  const { meta, validation } = d;
+  status.replaceChildren(
+    $('span', { class: 'pill' }, 'Report date ', $('b', { text: meta.reportDate || '—' })),
+    $('span', { class: 'pill' }, 'Source ', $('b', { text: meta.source === 'fixture' ? 'snapshot' : meta.source.replace('_', ' ') })),
+    $('span', { class: `pill ${validation.ok ? (validation.counts.WARNING ? 'warn' : 'ok') : 'crit'}` }, $('i', { class: 'dot' }),
+      $('b', { text: validation.ok ? 'Data validated' : 'Data contradictions' }), ` · ${validation.counts.WARNING} warnings`),
+  );
+}
+function renderFooter(app, meta) {
+  const prov = $('span', { class: 'prov', text: 'build …' });
+  app.append($('footer', {}, $('img', { src: '/brand/segments-cloud-mark.svg', alt: '' }), $('span', { text: 'Segments Cloud Computing · Operations Command Center' }),
+    $('span', { text: `Data as of ${meta.reportDate ?? '—'} · captured ${meta.capturedAt ? meta.capturedAt.slice(0, 16).replace('T', ' ') + ' UTC' : '—'}` }), prov,
+    $('a', { href: '/api/health', text: 'API health' }), $('a', { href: '/api/dataset?section=holdings&format=csv', text: 'Holdings CSV' })));
+  fetch('/api/health').then((r) => r.json()).then((hh) => { prov.textContent = hh.deploy?.commit ? `build ${hh.deploy.commit.slice(0, 7)} · ${hh.deploy.ref} · ${hh.deploy.env}` : 'build local'; }).catch(() => { prov.textContent = ''; });
+}
+const m2mTile = (label, value, foot) => $('div', { class: 'tile' }, $('div', { class: 'label', text: label }), $('div', { class: 'value', text: value }), foot ? $('div', { class: 'foot', text: foot }) : null);
+
+/* ---------- client drill-down (#client/<clientKey>) ---------- */
+async function renderClient(app, d, route) {
+  const key = route.clientKey, client = d.clients.find((c) => c.clientKey === key);
+  buildPanels(null); activateTab();
+  document.getElementById('tabs').append($('span', { class: 'crumb', 'aria-label': 'Breadcrumb' },
+    $('a', { href: hashFor('clients', route.filter), text: 'Clients' }), $('span', { class: 'sep', 'aria-hidden': 'true', text: '›' }), $('span', { 'aria-current': 'page', text: client ? client.clientName : 'Unknown client' })));
+  app.replaceChildren($('a', { class: 'back', href: hashFor('clients', route.filter), text: '← All clients' }));
+  if (!client) { app.append($('div', { class: 'err' }, $('strong', { text: 'No such client. ' }), `Nothing in the dataset has the key "${key}".`)); return; }
+  const view = deriveView(d, { ...EMPTY_FILTER, client: key });
+  const fleetUnits = d.summary.fleet.units;
+  const panel = $('section', { class: 'panel', role: 'region', 'aria-label': `Client ${client.clientName}` });
+  app.append(panel);
+
+  /* header */
+  const head = $('section', { class: 'card hero-card' });
+  const hd = $('div', { class: 'client-head' }, $('h1', { text: client.clientName }));
+  if (client.clientCode) hd.append($('span', { class: 'badge', text: `Code ${client.clientCode}` }));
+  head.append(hd, $('div', { class: 'client-meta', text: `${fmtInt(client.units)} units · ${pct(fleetUnits ? client.units / fleetUnits : null, 0)} of fleet · ${client.modelCount} model${client.modelCount === 1 ? '' : 's'} · ${fmtInt(client.hashrateTh)} TH/s` }));
+  panel.append(head);
+
+  /* holdings */
+  const avail = (a, minor) => a === 'QUOTED' ? usdFull(minor) : String(a ?? 'MISSING').replace('_', ' ').toLowerCase();
+  const hs = [...view.holdings].sort((a, b) => (b.units ?? 0) - (a.units ?? 0));
+  const pricedUsed = hs.filter((h) => h.usedTotalMinor != null), pricedFresh = hs.filter((h) => h.freshTotalMinor != null);
+  const hc = $('section', { class: 'card' });
+  hc.append($('h2', { text: `Holdings · ${hs.length} model${hs.length === 1 ? '' : 's'}` }), $('p', { class: 'sub', text: 'Line totals as recorded in the sheet. "not quoted" is a supplier fact (N/Q); "missing" is a blank cell.' }));
+  hc.append($('div', { class: 'tablewrap' }, table(
+    [{ h: 'Model' }, { h: 'Units', num: true }, { h: 'TH/s', num: true }, { h: 'Used unit $', num: true }, { h: 'Used total $', num: true }, { h: 'Fresh unit $', num: true }, { h: 'Fresh total $', num: true }],
+    hs.map((h) => [displayModel(h.modelLabel), fmtInt(h.units), fmtInt((h.units ?? 0) * (h.hashrateTh ?? 0)), avail(h.usedUnitPriceAvailability, h.usedUnitPriceMinor), usdOr(h.usedTotalMinor), avail(h.freshUnitPriceAvailability, h.freshUnitPriceMinor), usdOr(h.freshTotalMinor)]),
+    ['Total', fmtInt(client.units), fmtInt(client.hashrateTh), '', pricedUsed.length ? usdFull(sumBy(pricedUsed, (h) => h.usedTotalMinor)) : '—', '', pricedFresh.length ? usdFull(sumBy(pricedFresh, (h) => h.freshTotalMinor)) : '—'])));
+  if (pricedUsed.length < hs.length || pricedFresh.length < hs.length) {
+    hc.append($('p', { class: 'note', style: 'margin:10px 0 0', text: `Totals cover priced lines only: used ${pricedUsed.length} of ${hs.length}, fresh ${pricedFresh.length} of ${hs.length}.` }));
+  }
+  panel.append(hc);
+
+  /* hosting sample */
+  const ws = view.workers;
+  const ec = $('section', { class: 'card' });
+  const eh = $('div', { class: 'head' }), et = $('div');
+  et.append($('h2', { text: 'Hosting sample' }), ' ', $('span', { class: 'badge sample', text: `Sample · ${ws.length} of ${fmtInt(d.workers.length)} rows` }));
+  et.append($('p', { class: 'sub', text: 'Per-worker hosting rates on the report date. Describes the extract, not the whole holding.' })); eh.append(et); ec.append(eh);
+  if (!ws.length) ec.append($('div', { class: 'quiet', text: `No workers for this client in the ${fmtInt(d.workers.length)}-row sample` }));
+  else {
+    const rates = ws.map((w) => w.hostingRateMicroUsdPerKwh / 1e6).filter(Number.isFinite).sort((a, b) => a - b);
+    const kwhDay = sumBy(ws, (w) => (w.powerW / 1000) * 24), costDay = sumBy(ws, (w) => (w.powerW / 1000) * 24 * (w.hostingRateMicroUsdPerKwh / 1e6));
+    const engines = [...new Set(ws.map((w) => w.engine).filter(Boolean))];
+    const grid = $('div', { class: 'm2m' });
+    grid.append(m2mTile('Workers', fmtInt(ws.length), `${fmtNum(sumBy(ws, (w) => w.hashrateTh), 0)} TH/s in sample`), m2mTile(engines.length === 1 ? 'Engine' : 'Engines', engines.join(' · ') || '—'),
+      m2mTile('Rate $/kWh', !rates.length ? '—' : rates[0] === rates.at(-1) ? rates[0].toFixed(3) : `${rates[0].toFixed(3)}–${rates.at(-1).toFixed(3)}`, rates.length ? `median ${rates[Math.floor(rates.length / 2)].toFixed(3)}` : ''),
+      m2mTile('kWh / day', fmtNum(kwhDay, 0)), m2mTile('Hosting $ / day', '$' + fmtNum(costDay, 0)));
+    ec.append(grid);
+  }
+  panel.append(ec);
+
+  /* mark-to-market on this client's models */
+  const mc = $('section', { class: 'card' });
+  mc.append($('h2', { text: 'Mark-to-market' }), $('p', { class: 'sub', text: "This client's models re-valued at the latest observed supplier price. Exposure = units × (observed − sheet); only models with a comparable sheet quote enter the total." }));
+  panel.append(mc);
+  renderFooter(app, d.meta);
+  let feed;
+  try { feed = await (await fetch('/api/pricefeed?view=latest')).json(); if (feed.error) throw new Error(feed.detail || feed.error); }
+  catch (err) { mc.append($('div', { class: 'quiet', text: `Price feed unavailable: ${err.message}` })); return; }
+  const m = computeMarkToMarket(feed.latest ?? [], view);
+  if (!m.models.length) { mc.append($('div', { class: 'quiet', text: "No supplier observations for this client's models yet" })); return; }
+  const t = m.totals;
+  mc.append($('div', { class: 'tablewrap' }, table(
+    [{ h: 'Model' }, { h: 'Units', num: true }, { h: 'Basis' }, { h: 'Sheet / unit', num: true }, { h: 'Observed / unit', num: true }, { h: 'Δ / unit', num: true }, { h: 'Exposure', num: true }],
+    m.models.map((r) => [displayModel(r.label), fmtInt(r.units), r.basis, usdOr(r.sheetUnitMinor), usdOr(r.observedUnitMinor), signedUsd(r.deltaUnitMinor), signedUsd(r.exposureMinor)]),
+    ['Total', fmtInt(t.coveredUnits), '', '', '', '', t.modelsComparable ? signedUsd(t.deltaMinor) : '—'])));
+  const notes = [];
+  if (t.modelsComparable) notes.push(`At sheet quotes ${usdFull(t.sheetValueMinor)} · at observed prices ${usdFull(t.observedValueMinor)}${t.deltaPct == null ? '' : ` · ${t.deltaPct > 0 ? '+' : ''}${t.deltaPct}%`} on ${fmtInt(t.coveredUnits)} of ${fmtInt(client.units)} units.`);
+  if (t.modelsComparable < t.modelsObserved) notes.push(`${t.modelsObserved - t.modelsComparable} observed model${t.modelsObserved - t.modelsComparable === 1 ? '' : 's'} without a comparable sheet quote excluded from the total.`);
+  if (notes.length) mc.append($('p', { class: 'note', style: 'margin:10px 0 0', text: notes.join(' ') }));
 }
 
 /* ---------- render ---------- */
 let cached = null;
+const chartOrEmpty = (rows, build) => rows.length ? build() : $('div', { class: 'empty', text: 'No holdings match the current filters.' });
 async function main() {
   const app = document.getElementById('app'), status = document.getElementById('status');
   let d = cached;
@@ -405,21 +732,22 @@ async function main() {
       app.replaceChildren($('div', { class: 'err' }, $('strong', { text: 'Operational dataset unavailable. ' }), err.message)); return;
     }
   }
-  const { meta, models, clients, holdings, workers, validation, summary } = d;
-  const fleet = summary.fleet;
+  const route = parseHash();
+  renderedSig = routeSig(route);
+  renderStatus(status, d);
+  if (route.route === 'client') { renderClient(app, d, route); return; }
 
-  /* status pills */
-  status.replaceChildren(
-    $('span', { class: 'pill' }, 'Report date ', $('b', { text: meta.reportDate || '—' })),
-    $('span', { class: 'pill' }, 'Source ', $('b', { text: meta.source === 'fixture' ? 'snapshot' : meta.source.replace('_', ' ') })),
-    $('span', { class: `pill ${validation.ok ? (validation.counts.WARNING ? 'warn' : 'ok') : 'crit'}` }, $('i', { class: 'dot' }),
-      $('b', { text: validation.ok ? 'Data validated' : 'Data contradictions' }), ` · ${validation.counts.WARNING} warnings`),
-  );
+  /* Every tab below reads from the derived view; `d` stays the fleet-wide truth (validation, filter options). */
+  const filter = sanitizeFilter(route.filter, d), filtered = filterActive(filter);
+  const view = deriveView(d, filter);
+  const { meta, validation } = d;
+  const { models, clients, holdings, workers, summary } = view;
+  const fleet = summary.fleet;
 
   /* hero + KPI tiles */
   const hero = $('div', { class: 'hero' });
   hero.append($('section', { class: 'card hero-card tile' },
-    $('div', { class: 'label', text: 'Fleet under management' }),
+    $('div', { class: 'label', text: filtered ? 'Units in view' : 'Fleet under management' }),
     $('div', { class: 'value', text: fmtInt(fleet.units) }),
     $('div', { class: 'foot', text: `${fmtInt(models.length)} miner models · ${fmtInt(clients.length)} clients · ${fmtInt(holdings.length)} client-model holdings` })));
   const tile = (label, value, unit, foot) => $('section', { class: 'card tile' }, $('div', { class: 'label', text: label }),
@@ -430,41 +758,43 @@ async function main() {
     tile('SHA-256 fleet efficiency', fmtNum(fleet.sha256?.efficiencyJPerTh, 1), 'J/TH', `${fleet.sha256?.models ?? '?'} SHA-256 models · ${models.length - (fleet.sha256?.models ?? 0)} on other algorithms not compared`),
   );
   app.replaceChildren();
+  renderFilters(app, d, view, filter, route.tab);
   const panels = buildPanels(app);
   panels.overview.append(hero);
 
-  const cov = validation.findings.find((f) => f.id === 'coverage.prices');
+  const pricedUsed = models.filter((m) => m.usedUnitPriceAvailability === 'QUOTED').length, pricedFresh = models.filter((m) => m.freshUnitPriceAvailability === 'QUOTED').length;
   const kpis = $('div', { class: 'kpis' });
   kpis.append(
-    tile('Fleet value · used basis', usdCompact(fleet.usedValueMinor), null, `Cheapest exact-match quote · ${cov ? cov.modelsUsed.quoted + ' of ' + cov.modelsUsed.total + ' models priced' : ''}`),
-    tile('Fleet value · fresh basis', usdCompact(fleet.freshValueMinor), null, `Latest-dated new-unit quote · ${cov ? cov.modelsFresh.quoted + ' of ' + cov.modelsFresh.total + ' models priced' : ''}`),
-    tile('Fresh over used', pct((fleet.freshValueMinor - fleet.usedValueMinor) / fleet.usedValueMinor), null, 'Replacement premium on priced units only'),
+    tile('Fleet value · used basis', usdCompact(fleet.usedValueMinor), null, `Cheapest exact-match quote · ${pricedUsed} of ${models.length} models priced`),
+    tile('Fleet value · fresh basis', usdCompact(fleet.freshValueMinor), null, `Latest-dated new-unit quote · ${pricedFresh} of ${models.length} models priced`),
+    tile('Fresh over used', fleet.usedValueMinor && fleet.freshValueMinor ? pct((fleet.freshValueMinor - fleet.usedValueMinor) / fleet.usedValueMinor) : '—', null, 'Replacement premium on priced units only'),
     (() => {
+      if (!clients.length || !fleet.units) return tile('Client concentration', '—', null, 'No holdings match the current filters');
       const top5 = clients.slice(0, 5).reduce((a, c) => a + c.units, 0) / fleet.units;
       const hhi = clients.reduce((a, c) => a + Math.pow(c.units / fleet.units, 2), 0);
       return tile('Client concentration', pct(top5, 0), 'top 5', `HHI ${fmtNum(hhi * 10000, 0)} · ${clients[0].clientName} alone holds ${pct(clients[0].units / fleet.units, 0)}`);
     })(),
   );
   panels.overview.append(kpis);
-  renderAttention(panels.overview, kpis);
+  renderAttention(panels.overview, kpis, filtered);
 
   /* fleet composition + client concentration */
   const byUnits = [...models].sort((a, b) => b.totalUnits - a.totalUnits);
   const topModels = byUnits.slice(0, 8), restModels = byUnits.slice(8);
-  const compRows = topModels.map((m) => ({ label: m.label, values: [m.totalUnits], meta: [`${pct(m.fleetSharePct / 100)} of fleet · ${m.clientCount} clients`, `${m.hashrateTh} TH/s · ${fmtInt(m.powerW)} W · ${m.efficiencyJPerTh} J/TH`] }));
+  const compRows = topModels.map((m) => ({ label: m.label, values: [m.totalUnits], meta: [`${pct(m.fleetSharePct / 100)} of ${filtered ? 'view' : 'fleet'} · ${m.clientCount} clients`, `${m.hashrateTh} TH/s · ${fmtInt(m.powerW)} W · ${m.efficiencyJPerTh} J/TH`] }));
   if (restModels.length) compRows.push({ label: `Other (${restModels.length} models)`, values: [restModels.reduce((a, m) => a + m.totalUnits, 0)], meta: restModels.map((m) => `${m.label}: ${m.totalUnits}`) });
   panels.fleet.append(chartCard({
     title: 'Fleet composition', sub: 'Units by miner model · top 8, remainder folded',
-    svg: hbarChart({ rows: compRows, series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt }),
+    svg: chartOrEmpty(compRows, () => hbarChart({ rows: compRows, series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt })),
     table: table([{ h: 'Model' }, { h: 'Units', num: true }, { h: '% fleet', num: true }, { h: 'Clients', num: true }, { h: 'TH/s', num: true }, { h: 'W', num: true }, { h: 'J/TH', num: true }],
       byUnits.map((m) => [displayModel(m.label), fmtInt(m.totalUnits), m.fleetSharePct + '%', m.clientCount, m.hashrateTh, fmtInt(m.powerW), m.efficiencyJPerTh])),
   }));
   const topClients = clients.slice(0, 10);
   panels.clients.append(chartCard({
     title: 'Client concentration', sub: 'Units by client · top 10 of ' + clients.length,
-    svg: hbarChart({ rows: topClients.map((c) => ({ label: c.clientName, values: [c.units], meta: [`${pct(c.units / fleet.units)} of fleet · ${c.modelCount} model${c.modelCount > 1 ? 's' : ''} · ${fmtNum(c.hashrateTh, 0)} TH/s`, `Used ${usdFull(c.usedValueMinor)} · Fresh ${usdFull(c.freshValueMinor)}`] })), series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt }),
+    svg: chartOrEmpty(topClients, () => hbarChart({ rows: topClients.map((c) => ({ label: c.clientName, values: [c.units], meta: [`${pct(c.units / fleet.units)} of ${filtered ? 'view' : 'fleet'} · ${c.modelCount} model${c.modelCount > 1 ? 's' : ''} · ${fmtNum(c.hashrateTh, 0)} TH/s`, `Used ${usdFull(c.usedValueMinor)} · Fresh ${usdFull(c.freshValueMinor)}`] })), series: [{ name: 'Units', color: 'var(--series-1)' }], valueFmt: fmtInt })),
     table: table([{ h: 'Client' }, { h: 'Code' }, { h: 'Units', num: true }, { h: '% fleet', num: true }, { h: 'Models', num: true }, { h: 'TH/s', num: true }, { h: 'Used $', num: true }, { h: 'Fresh $', num: true }],
-      clients.map((c) => [c.clientName, c.clientCode ?? '—', fmtInt(c.units), pct(c.units / fleet.units), c.modelCount, fmtNum(c.hashrateTh, 0), usdFull(c.usedValueMinor), usdFull(c.freshValueMinor)])),
+      clients.map((c) => [clientLink(c.clientKey, c.clientName), c.clientCode ?? '—', fmtInt(c.units), pct(c.units / fleet.units), c.modelCount, fmtNum(c.hashrateTh, 0), usdFull(c.usedValueMinor), usdFull(c.freshValueMinor)])),
   }));
 
   /* valuation: used vs fresh per model (priced on at least one basis) */
@@ -472,8 +802,8 @@ async function main() {
   panels.valuation.append(chartCard({
     title: 'Fleet value by model', sub: 'Used vs fresh basis · models with at least one quote · top 10 by units',
     legend: [{ name: 'Used basis', color: 'var(--series-1)' }, { name: 'Fresh basis', color: 'var(--series-2)' }],
-    svg: hbarChart({ rows: priced.map((m) => ({ label: m.label, values: [m.usedFleetValueMinor == null ? null : m.usedFleetValueMinor / 100, m.freshFleetValueMinor == null ? null : m.freshFleetValueMinor / 100], meta: [`${fmtInt(m.totalUnits)} units · used ${m.usedUnitPriceMinor == null ? 'N/Q' : usdFull(m.usedUnitPriceMinor)} · fresh ${m.freshUnitPriceMinor == null ? 'N/Q' : usdFull(m.freshUnitPriceMinor)} per unit`, m.usedPriceNote || ''].filter(Boolean) })),
-      series: [{ name: 'Used basis', color: 'var(--series-1)' }, { name: 'Fresh basis', color: 'var(--series-2)' }], valueFmt: (v) => v == null ? 'not quoted' : usdCompact(v * 100), barH: 12, gap: 12 }),
+    svg: chartOrEmpty(priced, () => hbarChart({ rows: priced.map((m) => ({ label: m.label, values: [m.usedFleetValueMinor == null ? null : m.usedFleetValueMinor / 100, m.freshFleetValueMinor == null ? null : m.freshFleetValueMinor / 100], meta: [`${fmtInt(m.totalUnits)} units · used ${m.usedUnitPriceMinor == null ? 'N/Q' : usdFull(m.usedUnitPriceMinor)} · fresh ${m.freshUnitPriceMinor == null ? 'N/Q' : usdFull(m.freshUnitPriceMinor)} per unit`, m.usedPriceNote || ''].filter(Boolean) })),
+      series: [{ name: 'Used basis', color: 'var(--series-1)' }, { name: 'Fresh basis', color: 'var(--series-2)' }], valueFmt: (v) => v == null ? 'not quoted' : usdCompact(v * 100), barH: 12, gap: 12 })),
     table: table([{ h: 'Model' }, { h: 'Units', num: true }, { h: 'Used unit $', num: true }, { h: 'Used total $', num: true }, { h: 'Fresh unit $', num: true }, { h: 'Fresh total $', num: true }, { h: 'Used source' }],
       byUnits.map((m) => [displayModel(m.label), fmtInt(m.totalUnits), m.usedUnitPriceAvailability === 'QUOTED' ? usdFull(m.usedUnitPriceMinor) : m.usedUnitPriceAvailability.replace('_', ' ').toLowerCase(), usdFull(m.usedFleetValueMinor), m.freshUnitPriceAvailability === 'QUOTED' ? usdFull(m.freshUnitPriceMinor) : m.freshUnitPriceAvailability.replace('_', ' ').toLowerCase(), usdFull(m.freshFleetValueMinor), m.usedPriceNote ?? '—'])),
   }));
@@ -490,18 +820,21 @@ async function main() {
   const covW = validation.findings.find((f) => f.id === 'coverage.workers');
   const econ = $('section', { class: 'card' });
   const eh = $('div', { class: 'head' }); const et = $('div');
-  et.append($('h2', { text: 'Hosting economics' }), ' ', $('span', { class: 'badge sample', text: `Sample · ${workers.length} of ${fmtInt(meta.claimedWorkers)} workers` }));
+  et.append($('h2', { text: 'Hosting economics' }), ' ', $('span', { class: 'badge sample', text: filtered ? `Sample · ${workers.length} of ${fmtInt(d.workers.length)} sampled workers` : `Sample · ${workers.length} of ${fmtInt(meta.claimedWorkers)} workers` }));
   et.append($('p', { class: 'sub', text: 'Per-worker hosting rates on the report date. Describes the extract, not the fleet.' })); eh.append(et); econ.append(eh);
   econ.append($('div', { class: 'tablewrap' }, table([{ h: 'Engine' }, { h: 'Workers', num: true }, { h: 'Rate $/kWh', num: true }, { h: 'Median', num: true }, { h: 'kWh/day', num: true }, { h: 'Hosting $/day', num: true }],
     engines.map((e) => [e.eng, e.n, e.n ? `${e.min.toFixed(3)}–${e.max.toFixed(3)}` : '—', e.med?.toFixed(3), fmtNum(e.kwhDay, 0), '$' + fmtNum(e.costDay, 0)]))));
   const totalTh = engines.reduce((a, e) => a + e.th, 0), totalCost = engines.reduce((a, e) => a + e.costDay, 0);
-  econ.append($('p', { class: 'note', style: 'margin:10px 0 0', text: `Sample totals: ${fmtNum(totalTh, 0)} TH/s · $${fmtNum(totalCost, 0)} hosting per day · energy cost per TH/s per day $${(totalCost / totalTh).toFixed(4)}` }));
+  econ.append($('p', { class: 'note', style: 'margin:10px 0 0', text: workers.length
+    ? `Sample totals: ${fmtNum(totalTh, 0)} TH/s · $${fmtNum(totalCost, 0)} hosting per day · energy cost per TH/s per day $${totalTh ? (totalCost / totalTh).toFixed(4) : '—'}`
+    : `No workers match the current filters in the ${fmtInt(d.workers.length)}-row sample.` }));
   econ.append($('p', { class: 'note', style: 'margin:12px 0 0', text: covW ? covW.summary : '' }));
   panels.economics.append(econ);
 
-  /* data quality + not-in-dataset */
+  /* data quality + not-in-dataset (fleet-wide: validation never depends on the filter) */
   const dq = $('section', { class: 'card' });
   dq.append($('h2', { text: 'Data quality' }), $('p', { class: 'sub', text: `${validation.findings.length} rules · ${validation.counts.CRITICAL} critical · ${validation.counts.WARNING} warning · ${validation.counts.INFO} info · never auto-repaired` }));
+  if (filtered) dq.append($('p', { class: 'fnote', text: 'Data quality is fleet-wide; filters do not apply.' }));
   const dt = $('table'); const tb = $('tbody');
   for (const f of validation.findings) {
     const sev = $('span', { class: `sev ${f.severity}` }, sevIcon(f.severity), f.severity);
@@ -517,13 +850,8 @@ async function main() {
   panels.quality.append(na);
   tabCount('fleet', models.length); tabCount('clients', clients.length); tabCount('quality', validation.counts.WARNING + validation.counts.CRITICAL);
   activateTab();
-  renderPriceFeed(panels.pricefeed, models);
-
-  const prov = $('span', { class: 'prov', text: 'build …' });
-  app.append($('footer', {}, $('img', { src: '/brand/segments-cloud-mark.svg', alt: '' }), $('span', { text: 'Segments Cloud Computing · Operations Command Center' }),
-    $('span', { text: `Data as of ${meta.reportDate ?? '—'} · captured ${meta.capturedAt ? meta.capturedAt.slice(0, 16).replace('T', ' ') + ' UTC' : '—'}` }), prov,
-    $('a', { href: '/api/health', text: 'API health' }), $('a', { href: '/api/dataset?section=holdings&format=csv', text: 'Holdings CSV' })));
-  fetch('/api/health').then((r) => r.json()).then((hh) => { prov.textContent = hh.deploy?.commit ? `build ${hh.deploy.commit.slice(0, 7)} · ${hh.deploy.ref} · ${hh.deploy.env}` : 'build local'; }).catch(() => { prov.textContent = ''; });
+  renderPriceFeed(panels.pricefeed, d, view, filtered);
+  renderFooter(app, meta);
 }
 main();
 let wasNarrow = narrow(), resizeTimer;
