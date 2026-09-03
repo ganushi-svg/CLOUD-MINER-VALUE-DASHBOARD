@@ -52,7 +52,8 @@
   .fnote::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand-gold);margin-right:7px;vertical-align:middle;opacity:.8}
 
   /* ---- Client drill-down (#client/<clientKey>) ---- */
-  .crumb{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:12px 14px 11px;font:600 12.5px/1 var(--sans);color:var(--ink);white-space:nowrap}
+  .crumb{order:1;margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:12px 14px 11px;font:600 12.5px/1 var(--sans);color:var(--ink);white-space:nowrap}
+  @media (max-width:560px){.crumb{order:-1;margin-left:0;padding-left:0;margin-right:8px}}
   .crumb a{color:var(--muted)} .crumb a:hover{color:var(--ink)} .crumb .sep{color:var(--muted)}
   .back{display:inline-block;margin:22px 0 -8px;font-size:12.5px}
   .client-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
@@ -646,7 +647,7 @@ const m2mTile = (label, value, foot) => $('div', { class: 'tile' }, $('div', { c
 async function renderClient(app, d, route) {
   const key = route.clientKey, client = d.clients.find((c) => c.clientKey === key);
   buildPanels(null); activateTab();
-  document.getElementById('tabs').append($('span', { class: 'crumb', 'aria-label': 'Breadcrumb' },
+  document.getElementById('tabs').prepend($('span', { class: 'crumb', 'aria-label': 'Breadcrumb' },
     $('a', { href: hashFor('clients', route.filter), text: 'Clients' }), $('span', { class: 'sep', 'aria-hidden': 'true', text: '›' }), $('span', { 'aria-current': 'page', text: client ? client.clientName : 'Unknown client' })));
   app.replaceChildren($('a', { class: 'back', href: hashFor('clients', route.filter), text: '← All clients' }));
   if (!client) { app.append($('div', { class: 'err' }, $('strong', { text: 'No such client. ' }), `Nothing in the dataset has the key "${key}".`)); return; }
