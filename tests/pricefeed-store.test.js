@@ -59,3 +59,61 @@ test('webhook signature verification is exact and constant-time shaped', () => {
   assert.equal(verifySignature(body, good.replace('sha256=', 'sha1='), secret), false);
   assert.equal(verifySignature(body, '', secret), false);
 });
+
+test('historySeries groups by model and basis, oldest first', async () => {
+  const { historySeries } = await import('../src/pricefeed/store.js');
+  const h = historySeries([obs({ observedAt: '2026-09-03T08:00:00Z', unitPriceMinor: 132000 }), obs(), obs({ basis: 'FRESH' })]);
+  assert.equal(h.length, 2);
+  const used = h.find((x) => x.basis === 'USED');
+  assert.deepEqual(used.points.map((p) => p.unitPriceMinor), [126900, 132000]);
+  assert.equal(used.points[0].observedAt, '2026-09-02T08:00:00Z');
+});
+
+test('supabase store inserts with ignore-duplicates, reads oldest-first, upserts and deletes states', async () => {
+  const calls = [];
+  const table = new Map(); // dedupe_key -> row
+  const states = new Map();
+  const fetchImpl = async (url, init = {}) => {
+    const u = new URL(url); const method = init.method ?? 'GET';
+    calls.push([method, u.pathname + u.search, init.headers]);
+    assert.equal(init.headers.apikey, 'secret'); assert.equal(init.headers.authorization, 'Bearer secret');
+    if (u.pathname.endsWith('/ops_price_observations')) {
+      if (method === 'POST') {
+        assert.equal(u.searchParams.get('on_conflict'), 'dedupe_key');
+        assert.match(init.headers.prefer, /resolution=ignore-duplicates/);
+        const inserted = [];
+        for (const r of JSON.parse(init.body)) { if (!table.has(r.dedupe_key)) { table.set(r.dedupe_key, r); inserted.push(r); } }
+        return { ok: true, status: 201, json: async () => inserted };
+      }
+      assert.equal(u.searchParams.get('order'), 'observed_at.desc');
+      const rows = [...table.values()].sort((a, b) => (a.observed_at < b.observed_at ? 1 : -1)).slice(0, Number(u.searchParams.get('limit')));
+      return { ok: true, status: 200, json: async () => rows };
+    }
+    if (u.pathname.endsWith('/ops_event_states')) {
+      if (method === 'POST') { assert.match(init.headers.prefer, /merge-duplicates/); for (const r of JSON.parse(init.body)) states.set(r.id, r); return { ok: true, status: 201, json: async () => [] }; }
+      if (method === 'DELETE') { const list = decodeURIComponent(u.search).match(/in\.\((.*)\)/)[1]; for (const id of list.split(',').map((x) => x.replace(/"/g, ''))) states.delete(id); return { ok: true, status: 204, json: async () => null }; }
+      return { ok: true, status: 200, json: async () => [...states.values()] };
+    }
+    throw new Error('unexpected ' + url);
+  };
+  const store = createStore({ PRICEFEED_STORE: 'supabase', SUPABASE_URL: 'https://x.supabase.co/', SUPABASE_SECRET_KEY: 'secret' }, { fetchImpl });
+  assert.equal(store.kind, 'supabase'); assert.equal(store.durable, true); assert.equal(store.statesDurable, true);
+  assert.deepEqual(await store.append([obs(), obs({ messageId: 'b' })]), { added: 1, duplicates: 1 }, 'in-batch duplicate never leaves the process');
+  assert.deepEqual(await store.append([obs(), obs({ observedAt: '2026-09-03T08:00:00Z', unitPriceMinor: 125000 })]), { added: 1, duplicates: 1 }, 'table duplicate counted from the representation');
+  const all = await store.all();
+  assert.deepEqual(all.map((o) => o.unitPriceMinor), [126900, 125000], 'oldest first, money exact');
+  assert.equal(all[0].dedupeKey, dedupeKey(obs()));
+  assert.equal((await store.latest())[0].unitPriceMinor, 125000);
+  assert.equal((await store.history())[0].points.length, 2);
+  await store.putStates([{ id: 'price.delta:antminer-s21+-235th:USED', severity: 'WARNING', title: 't', firstSeenAt: '2026-09-01T00:00:00Z', lastSeenAt: '2026-09-02T00:00:00Z', clearedAt: null }]);
+  assert.equal((await store.getStates())[0].id, 'price.delta:antminer-s21+-235th:USED');
+  await store.deleteStates(['price.delta:antminer-s21+-235th:USED']);
+  assert.deepEqual(await store.getStates(), []);
+  assert.ok(calls.some(([m, p]) => m === 'DELETE' && p.includes('%2B')), 'plus sign in an id is percent-encoded, not turned into a space');
+});
+
+test('a requested store without credentials falls back to memory and says which store was asked for', () => {
+  const store = createStore({ PRICEFEED_STORE: 'supabase' });
+  assert.equal(store.kind, 'memory');
+  assert.equal(store.requested, 'supabase');
+});

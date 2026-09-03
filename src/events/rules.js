@@ -5,13 +5,14 @@
 //   INFO      a fact worth knowing that needs no action
 //   WARNING   incomplete, drifting, or approaching a limit
 //   CRITICAL  contradicted data or a breached threshold; act now
-//   RECOVERY  a prior CRITICAL has cleared - requires state from one run to
-//             the next, which arrives with Milestone 2's database. The value is
-//             reserved here and never emitted by the stateless engine.
+//   RECOVERY  a prior WARNING or CRITICAL has cleared. Needs the previous run's
+//             state, which the price-feed store keeps (durably on Supabase, in
+//             function memory otherwise). A recovery stays visible for 24 hours.
 //
 // Every rule is a pure function of (dataset, priceFeed) and documents its
-// thresholds inline. The output shape is the contract Milestone 8 hands to the
-// mascot controller: { id, severity, title, detail, source }.
+// thresholds inline; reconcileStates() is the only stateful step and is pure
+// in (events, previous states, now). The output shape is the contract
+// Milestone 8 hands to the mascot controller: { id, severity, title, detail, source }.
 
 export const EventSeverity = Object.freeze({ NORMAL: 'NORMAL', INFO: 'INFO', WARNING: 'WARNING', CRITICAL: 'CRITICAL', RECOVERY: 'RECOVERY' });
 const ORDER = { CRITICAL: 0, WARNING: 1, RECOVERY: 2, INFO: 3, NORMAL: 4 };
@@ -82,9 +83,11 @@ function feedActivity({ latest, now }) {
 /** A memory store loses everything on the next cold start. */
 function feedStore({ store }) {
   if (!store) return null;
-  return store.durable
-    ? ev('price.store', EventSeverity.NORMAL, `Price observations stored in ${store.kind}`, 'Durable across restarts.', 'pricefeed')
-    : ev('price.store', EventSeverity.WARNING, 'Price observations are not durable', 'The store is function memory; set PRICEFEED_STORE=sheet or wait for Milestone 2 to keep them.', 'pricefeed');
+  if (store.durable) return ev('price.store', EventSeverity.NORMAL, `Price observations stored in ${store.kind}`, 'Durable across restarts.', 'pricefeed');
+  const why = store.requested
+    ? `PRICEFEED_STORE=${store.requested} is set but its credentials are missing, so the store fell back to function memory.`
+    : 'The store is function memory; set PRICEFEED_STORE=supabase (with SUPABASE_URL and SUPABASE_SECRET_KEY) to keep them.';
+  return ev('price.store', EventSeverity.WARNING, 'Price observations are not durable', why, 'pricefeed');
 }
 
 /** Concentration is a fact to state, not an alarm: >=15% of the fleet in one client. */
@@ -103,15 +106,58 @@ function concentration({ dataset }) {
 
 const RULES = [staleness, source, integrity, priceDeltas, feedActivity, feedStore, concentration];
 
+const ALERTING = new Set([EventSeverity.WARNING, EventSeverity.CRITICAL]);
+export const RECOVERY_WINDOW_MS = 24 * 3_600_000;
+const stamp = (iso) => String(iso).slice(0, 16).replace('T', ' ') + ' UTC';
+
 /**
- * @param {object} ctx { dataset, latest (enriched observations), store, now (Date) }
+ * Compare this run's events with the alerting states remembered from the last
+ * run. An id that was WARNING/CRITICAL and is now absent or calm becomes a
+ * RECOVERY event for the next 24 hours; alerting ids keep their first-seen time.
+ * Returns the recoveries to publish and the states to remember for next time
+ * (states outside the recovery window are dropped, so the caller can delete them).
+ */
+export function reconcileStates(events, prevStates = [], now = new Date()) {
+  const prev = new Map((prevStates ?? []).map((s) => [s.id, s]));
+  const nowIso = now.toISOString();
+  const next = new Map();
+  const recoveries = [];
+  const recover = (s, current) => {
+    const clearedAt = s.clearedAt ?? nowIso;
+    if (now - new Date(clearedAt) > RECOVERY_WINDOW_MS) return; // window passed: forget it
+    next.set(s.id, { ...s, clearedAt });
+    recoveries.push(ev(`recovery:${s.id}`, EventSeverity.RECOVERY, `Cleared: ${s.title}`,
+      `Was ${s.severity} from ${stamp(s.firstSeenAt)}; ${current ? `${current.severity.toLowerCase()} since` : 'no longer reported as of'} ${stamp(clearedAt)}.`,
+      'events', { clearedId: s.id, wasSeverity: s.severity, firstSeenAt: s.firstSeenAt, clearedAt }));
+  };
+  const seen = new Set();
+  for (const e of events) {
+    seen.add(e.id);
+    const p = prev.get(e.id);
+    if (ALERTING.has(e.severity)) {
+      const continuing = p && !p.clearedAt && ALERTING.has(p.severity);
+      next.set(e.id, { id: e.id, severity: e.severity, title: e.title, firstSeenAt: continuing ? p.firstSeenAt : nowIso, lastSeenAt: nowIso, clearedAt: null });
+    } else if (p && ALERTING.has(p.severity)) {
+      recover(p, e);
+    }
+  }
+  for (const [id, p] of prev) if (!seen.has(id) && ALERTING.has(p.severity)) recover(p, null);
+  return { recoveries, states: [...next.values()] };
+}
+
+const sortBySeverity = (events) => [...events].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
+
+/**
+ * @param {object} ctx { dataset, latest (enriched observations), store, now (Date), prevStates? }
+ * @returns the feed plus `states` for the caller to persist (strip before serving).
  */
 export function evaluateEvents(ctx) {
   const now = ctx.now ?? new Date();
-  const events = RULES.flatMap((rule) => { const r = rule({ ...ctx, now }); return Array.isArray(r) ? r : r ? [r] : []; })
-    .sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
+  const ruled = RULES.flatMap((rule) => { const r = rule({ ...ctx, now }); return Array.isArray(r) ? r : r ? [r] : []; });
+  const { recoveries, states } = reconcileStates(ruled, ctx.prevStates ?? [], now);
+  const events = sortBySeverity([...ruled, ...recoveries]);
   const counts = { CRITICAL: 0, WARNING: 0, RECOVERY: 0, INFO: 0, NORMAL: 0 };
   for (const e of events) counts[e.severity]++;
   const overall = events[0]?.severity ?? EventSeverity.NORMAL;
-  return { generatedAt: now.toISOString(), overall, counts, events: events.map((e) => ({ ...e, at: now.toISOString() })) };
+  return { generatedAt: now.toISOString(), overall, counts, events: events.map((e) => ({ ...e, at: now.toISOString() })), states };
 }

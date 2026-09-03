@@ -83,10 +83,10 @@ npm run dev                      # http://localhost:3000
 | --- | --- |
 | `GET /api/health` | Liveness, source used, fleet rollup, validation counts |
 | `GET /api/dataset` | Normalized dataset; `?section=models\|clients\|holdings\|workers\|summary`; add `&format=csv` for a spreadsheet-ready export of one section |
-| `GET /api/events` | Attention feed: severity-ranked events (staleness, integrity, price deltas, feed age, concentration) with an overall NORMAL/INFO/WARNING/CRITICAL state |
+| `GET /api/events` | Attention feed: severity-ranked events (staleness, integrity, price deltas, feed age, concentration) with an overall state; a cleared WARNING/CRITICAL is reported as RECOVERY for 24 h, with the alerting states remembered in the price-feed store |
 | `GET /api/quality` | Data-quality findings with severities |
 | `GET\|POST /api/refresh` | Force re-ingest, bypassing the warm-instance cache |
-| `GET /api/pricefeed` | Observed supplier prices vs sheet quotes plus a fleet mark-to-market (`markToMarket`); `?view=all` for every observation |
+| `GET /api/pricefeed` | Observed supplier prices vs sheet quotes plus a fleet mark-to-market (`markToMarket`); `?view=all` adds every observation and the per-model `history` series behind the sparklines |
 | `POST /api/pricefeed` | Ingest a price list (bearer `PRICEFEED_INGEST_SECRET`) |
 | `GET\|POST /api/whatsapp` | Meta Cloud API webhook: verification handshake and signed message delivery |
 

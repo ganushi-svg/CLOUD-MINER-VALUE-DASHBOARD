@@ -68,6 +68,6 @@ export function markToMarket(latest, dataset) {
       observedValueMinor, sheetValueMinor, deltaMinor: observedValueMinor - sheetValueMinor,
       deltaPct: sheetValueMinor ? Number((((observedValueMinor - sheetValueMinor) / sheetValueMinor) * 100).toFixed(1)) : null,
     },
-    clients: [...clients.values()].sort((a, b) => Math.abs(b.exposureMinor) - Math.abs(a.exposureMinor)).slice(0, 8),
+    clients: [...clients.values()].sort((a, b) => Math.abs(b.exposureMinor) - Math.abs(a.exposureMinor)),
   };
 }

@@ -97,6 +97,13 @@ negative test that a contradicted dataset fails loudly.
   concentration. This is the alert contract the M7 mascot state machine and the
   M4 AI layer will consume; `RECOVERY` is reserved until M2 persistence can
   compare consecutive states.
+- *Durable price observations* — `PRICEFEED_STORE=supabase` keeps observations
+  and event states in two RLS-locked Postgres tables on the Segments Cloud
+  Supabase project (`db/ops_pricefeed.sql`), reached through PostgREST with a
+  server-only secret key. `GET /api/pricefeed?view=all` now returns a per-model
+  `history` series; the events engine compares each run with the remembered
+  alerting states and emits `RECOVERY` for 24 hours after a WARNING/CRITICAL
+  clears. This is the first slice of Milestone 2's persistence.
 - *Mark-to-market* — `src/pricefeed/compare.js`. Re-prices the fleet at the
   latest observed supplier quotes, basis-matched to the sheet's quote, with
   per-model and per-client exposure. Reported in `GET /api/pricefeed`.

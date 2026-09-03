@@ -84,9 +84,24 @@ $PRICEFEED_INGEST_SECRET` and `{ "text": "...", "source": "..." }` runs the iden
 parser — usable from an email-forwarding rule, a script, or a paste.
 
 **Durability.** The default store is function memory: fine for a trial, gone on the next
-cold start, and labelled *not durable* in the UI. Set `PRICEFEED_STORE=sheet` (with the
-service account) to write observations into a `PriceFeed` tab of the workbook until
-Milestone 2's database exists.
+cold start, and labelled *not durable* in the UI. The recommended store is the Segments
+Cloud Supabase project, where the migration `ops_pricefeed_observations_and_event_states`
+(source: `db/ops_pricefeed.sql`) has already created two tables with row-level security
+on and no policies — only a secret key can touch them. Set, in Vercel:
+
+| Variable | Value |
+| --- | --- |
+| `PRICEFEED_STORE` | `supabase` |
+| `SUPABASE_URL` | the project URL, `https://<project-ref>.supabase.co` |
+| `SUPABASE_SECRET_KEY` | Supabase Dashboard → Project Settings → API Keys → a **secret** key (`sb_secret_…`; the legacy `service_role` JWT also works). Never the publishable/anon key, which RLS blocks by design. |
+
+With that in place `/api/pricefeed` reports `store.kind = "supabase"`, the *not durable*
+warning in the attention feed clears (and shows as a RECOVERY for a day), price
+history accumulates per model for the sparklines, and `/api/events` remembers
+alerting states between runs so a cleared WARNING/CRITICAL is reported as RECOVERY.
+If the variables are set but wrong, the store falls back to memory and the attention
+feed names the store that was asked for. `PRICEFEED_STORE=sheet` (with the service
+account) remains available as the workbook-tab alternative.
 
 ## Verifying a deployment
 

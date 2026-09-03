@@ -1,6 +1,6 @@
 // Price feed: read observed supplier prices, or ingest a price list by hand.
 //
-// GET  /api/pricefeed?view=latest|all
+// GET  /api/pricefeed?view=latest|all   (all adds every observation and the per-model history series)
 // POST /api/pricefeed   { text, source?, sender?, observedAt? }
 //      Authorization: Bearer <PRICEFEED_INGEST_SECRET>
 //
@@ -16,12 +16,14 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const store = createStore();
       const view = String(req.query?.view ?? 'latest');
-      const [latest, all, dataset] = await Promise.all([store.latest(), view === 'all' ? store.all() : [], getDataset()]);
+      const wantAll = view === 'all' || view === 'history';
+      const [latest, all, history, dataset] = await Promise.all([store.latest(), wantAll ? store.all() : [], wantAll ? store.history() : [], getDataset()]);
       const enrichedLatest = enrichWithQuotes(latest, dataset.models);
       return res.status(200).json({
-        store: { kind: store.kind, durable: store.durable },
+        store: { kind: store.kind, durable: store.durable, requested: store.requested ?? null },
         latest: enrichedLatest,
         observations: enrichWithQuotes(all, dataset.models),
+        history,
         markToMarket: enrichedLatest.length ? markToMarket(enrichedLatest, dataset) : null,
         generatedAt: new Date().toISOString(),
       });
