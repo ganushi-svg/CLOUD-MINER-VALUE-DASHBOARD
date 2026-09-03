@@ -52,13 +52,17 @@ later milestone reads, so no other component ever parses a spreadsheet.
 **Components.**
 `src/ingest/sheets.js` (connector chain), `src/ingest/csv.js`,
 `src/normalize/coerce.js` (money, sentinels, dates), `src/normalize/clients.js`,
-`src/normalize/models.js` (canonical registry), `src/normalize/pipeline.js`,
-`src/validate/rules.js`, `src/dataset.js`, `api/{health,dataset,quality,refresh}.js`,
-`public/index.html`, `data/fixtures/`, `scripts/{ingest,serve}.mjs`.
+`src/normalize/models.js` (canonical registry), `src/normalize/algorithms.js`
+(curated hash-algorithm map — the source has no algorithm column),
+`src/normalize/pipeline.js`, `src/validate/rules.js`, `src/dataset.js`,
+`api/{health,dataset,quality,refresh}.js`, `public/index.html`, `data/fixtures/`,
+`scripts/{ingest,serve,deploy-status}.mjs`, and the project skills under
+`.claude/skills/` (`run-dashboard`, `verify-deploy`, `ingest-pricelist`,
+`data-quality`, `promote`, `ops-center-conventions`).
 
 **Dependencies.** None. Node ≥20, zero runtime packages.
 
-**APIs.** `GET /api/health` · `GET /api/dataset[?section=models|clients|holdings|workers|summary][&refresh=1]` · `GET /api/quality` · `GET|POST /api/refresh`.
+**APIs.** `GET /api/health` · `GET /api/dataset[?section=models|clients|holdings|workers|summary][&format=csv][&refresh=1]` · `GET /api/quality` · `GET|POST /api/refresh` · `GET /api/events` (attention feed, delivered early from M3/M4 — see below).
 
 **Inputs.** The workbook via service account, public CSV export, or committed
 snapshot — whichever `INGEST_SOURCES` resolves first.
@@ -69,7 +73,7 @@ micro-dollars per kWh. Prices carry an availability flag
 (`QUOTED` / `NOT_QUOTED` / `MISSING` / `UNPARSEABLE`) so "no supplier quote"
 stays distinct from "nobody filled it in".
 
-**Testing.** 28 tests. Unit: money exactness, sentinel handling, merged-cell
+**Testing.** 37 tests. Unit: money exactness, sentinel handling, merged-cell
 stripping, calendar-date rejection, client-code and model-slug convergence.
 Integration against the real snapshot: row counts, the 1,395-unit reconciliation,
 exact prices, unmerge correctness, connector precedence and fallback, and a
@@ -81,8 +85,24 @@ negative test that a contradicted dataset fails loudly.
 3. Every priced line total equals unit price × units, to the cent. ✅
 4. Every model string in all three tabs resolves to the registry; zero dropped rows. ✅
 5. Worker IDs unique. ✅
-6. Zero CRITICAL findings; the four WARNINGs are true statements about the data. ✅
+6. Zero CRITICAL findings; the three WARNINGs are true statements about the data (efficiency is judged per algorithm group, so the Kaspa model is INFO, not a warning). ✅
 7. The service deploys and serves without any credential. ✅
+
+**Delivered ahead of schedule (pulled forward from M3/M4/M5).**
+- *Events engine* — `src/events/rules.js` + `GET /api/events`. Deterministic
+  rules over the M1 dataset and the price-feed store produce a severity-ranked
+  attention feed (`NORMAL` / `INFO` / `WARNING` / `CRITICAL`) with an overall
+  state: snapshot staleness, fixture-vs-live source, validation integrity,
+  supplier price deltas ≥15% / ≥30%, feed age, memory-only store, fleet
+  concentration. This is the alert contract the M7 mascot state machine and the
+  M4 AI layer will consume; `RECOVERY` is reserved until M2 persistence can
+  compare consecutive states.
+- *Mark-to-market* — `src/pricefeed/compare.js`. Re-prices the fleet at the
+  latest observed supplier quotes, basis-matched to the sheet's quote, with
+  per-model and per-client exposure. Reported in `GET /api/pricefeed`.
+- *Dashboard* — attention strip on the overview, mark-to-market card on the
+  price-feed tab, SHA-256-only fleet efficiency tile, deploy provenance in the
+  footer, CSV export of holdings.
 
 ---
 

@@ -34,6 +34,8 @@ const server = createServer(async (req, res) => {
       const shim = {
         status(code) { res.statusCode = code; return shim; },
         json(payload) { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(payload, null, 2)); return shim; },
+        setHeader(name, value) { res.setHeader(name, value); return shim; },
+        send(payload) { if (!res.getHeader('content-type')) res.setHeader('content-type', typeof payload === 'string' ? 'text/plain; charset=utf-8' : 'application/octet-stream'); res.end(payload); return shim; },
       };
       return handler({ method: req.method, query: Object.fromEntries(url.searchParams), headers: req.headers, body }, shim);
     }

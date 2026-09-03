@@ -163,20 +163,39 @@ function hostingRateBand({ workers }, { minMicro = 10_000, maxMicro = 500_000 } 
         `Hosting rates span $${detail.minUsdPerKwh}-$${detail.maxUsdPerKwh}/kWh across ${detail.distinctRates} distinct rates.`, detail);
 }
 
-/** Efficiency outside this band means hashrate and power disagree. */
+/**
+ * Efficiency outside this band means hashrate and power disagree - but only
+ * within one hashing algorithm. Models are grouped by their curated algorithm;
+ * a group of one has no peer and is reported, not judged.
+ */
 function efficiencyBand({ models }, { min = 5, max = 100 } = {}) {
-  const outliers = models
-    .filter((m) => m.efficiencyJPerTh != null && (m.efficiencyJPerTh < min || m.efficiencyJPerTh > max))
-    .map((m) => ({ modelKey: m.modelKey, label: m.label, efficiencyJPerTh: m.efficiencyJPerTh }));
+  const groups = new Map();
+  for (const m of models) {
+    const k = m.algorithm ?? 'UNKNOWN';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(m);
+  }
   const missing = models.filter((m) => m.efficiencyJPerTh == null).map((m) => m.label);
+  const outliers = [], singletons = [];
+  for (const [algo, ms] of groups) {
+    if (ms.length === 1) { singletons.push({ algorithm: algo, label: ms[0].label, efficiencyJPerTh: ms[0].efficiencyJPerTh }); continue; }
+    for (const m of ms) {
+      if (m.efficiencyJPerTh != null && (m.efficiencyJPerTh < min || m.efficiencyJPerTh > max)) {
+        outliers.push({ algorithm: algo, modelKey: m.modelKey, label: m.label, efficiencyJPerTh: m.efficiencyJPerTh });
+      }
+    }
+  }
+  const byAlgo = Object.fromEntries([...groups].map(([k, v]) => [k, v.length]));
   if (!outliers.length && !missing.length) {
-    return finding('plausibility.efficiency', Severity.INFO, `All ${models.length} models fall within ${min}-${max} J/TH.`);
+    const solo = singletons.map((s) => `${s.label} (${s.algorithm}, ${s.efficiencyJPerTh} J/TH)`).join('; ');
+    return finding('plausibility.efficiency', Severity.INFO,
+      `All models within ${min}-${max} J/TH inside their algorithm group` +
+      (singletons.length ? `; ${singletons.length} model(s) have no peer to compare against: ${solo}.` : '.'),
+      { byAlgorithm: byAlgo, singletons, note: 'Algorithm is curated product knowledge, not a sheet column.' });
   }
   return finding('plausibility.efficiency', Severity.WARNING,
-    `${outliers.length} model(s) outside ${min}-${max} J/TH; ${missing.length} lack hashrate or power. ` +
-    'J/TH is only comparable within one hashing algorithm and this source carries no algorithm column, ' +
-    'so an outlier here is more likely a non-SHA-256 model than a bad number. Confirm before treating as an error.',
-    { outliers, missing, note: 'Needs an algorithm field from the fleet registry to resolve automatically.' });
+    `${outliers.length} model(s) outside ${min}-${max} J/TH within their own algorithm group; ${missing.length} lack hashrate or power.`,
+    { outliers, missing, byAlgorithm: byAlgo, singletons });
 }
 
 /** A single report date means the snapshot is a point-in-time cut, not a series. */

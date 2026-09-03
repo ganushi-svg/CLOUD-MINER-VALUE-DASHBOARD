@@ -53,6 +53,18 @@
   .panel>.card{margin-bottom:14px}
   .delta{font-variant-numeric:tabular-nums}
   .empty{padding:28px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+  .attn{margin:14px 0 8px}
+  .attn .row{display:grid;grid-template-columns:104px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--grid);align-items:start}
+  .attn .row:last-child{border-bottom:0}
+  .attn .t{color:var(--ink);font-weight:600;font-size:13px}
+  .attn .d{color:var(--muted);font-size:12px;margin-top:2px}
+  .sev.NORMAL{background:rgba(255,255,255,.06);color:var(--ink-2)}
+  .sev.RECOVERY{background:rgba(74,139,240,.16);color:#8FB8F7}
+  .quiet{color:var(--muted);font-size:12.5px;padding:8px 0}
+  .m2m{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:8px 0 14px}
+  .m2m .tile{background:var(--surface-2);border-radius:10px;padding:12px 14px}
+  .m2m .tile .value{font-size:20px}
+  .prov{font-variant-numeric:tabular-nums}
   .empty code{display:inline-block;margin-top:6px}
   .card{background:var(--surface);border:1px solid var(--ring);border-radius:var(--radius);padding:18px 20px;min-width:0}
   .card.hero-card{background:linear-gradient(135deg,#142556 0%,#111B30 60%);border-color:rgba(74,139,240,.25)}
@@ -262,7 +274,7 @@ function table(cols, rows) {
   t.append(tb); return t;
 }
 const sevIcon = (sev) => {
-  const p = { INFO: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zm-.7 3.5h1.4v1.2H5.3zm0 2h1.4V9H5.3z', WARNING: 'M6 1l5.5 10h-11zM5.3 5h1.4v2.6H5.3zm0 3.3h1.4v1.2H5.3z', CRITICAL: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zM4.2 3.4L3.4 4.2 5.2 6 3.4 7.8l.8.8L6 6.8l1.8 1.8.8-.8L6.8 6l1.8-1.8-.8-.8L6 5.2z' }[sev];
+  const p = { NORMAL: 'M2 6.2l2.6 2.6L10 3.4l-.9-.9-4.5 4.5-1.7-1.7z', RECOVERY: 'M6 1a5 5 0 1 1-3.5 1.5L4 4H1V1l1.1 1.1A6.4 6.4 0 0 1 6 1z', INFO: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zm-.7 3.5h1.4v1.2H5.3zm0 2h1.4V9H5.3z', WARNING: 'M6 1l5.5 10h-11zM5.3 5h1.4v2.6H5.3zm0 3.3h1.4v1.2H5.3z', CRITICAL: 'M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zM4.2 3.4L3.4 4.2 5.2 6 3.4 7.8l.8.8L6 6.8l1.8 1.8.8-.8L6.8 6l1.8-1.8-.8-.8L6 5.2z' }[sev];
   const svg = s('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' }); svg.append(s('path', { d: p, fill: 'currentColor' })); return svg;
 };
 
@@ -300,6 +312,31 @@ function activateTab() {
 addEventListener('hashchange', activateTab);
 const tabCount = (key, n) => { const b = document.getElementById(`tab-${key}`); if (b && n != null) { b.querySelector('.n')?.remove(); b.append($('span', { class: 'n', text: String(n) })); } };
 
+/* ---------- attention strip (operational events) ---------- */
+async function renderAttention(panel, before) {
+  const card = $('section', { class: 'card attn' });
+  card.append($('h2', { text: 'Attention' }), $('p', { class: 'sub', text: 'Operational events computed from the data. Later milestones drive alerts and the mascot from this severity model.' }));
+  panel.insertBefore(card, before);
+  let ev;
+  try { ev = await (await fetch('/api/events')).json(); if (ev.error) throw new Error(ev.detail || ev.error); }
+  catch (err) { card.append($('div', { class: 'quiet', text: `Events unavailable: ${err.message}` })); return; }
+  const status = document.getElementById('status');
+  const pill = status.querySelector('.pill.ok, .pill.warn, .pill.crit');
+  if (pill) {
+    pill.className = 'pill ' + (ev.overall === 'CRITICAL' ? 'crit' : ev.overall === 'WARNING' ? 'warn' : 'ok');
+    pill.replaceChildren($('i', { class: 'dot' }), $('b', { text: ev.overall === 'NORMAL' ? 'All normal' : ev.overall === 'INFO' ? 'Nothing urgent' : `${ev.counts.CRITICAL} critical · ${ev.counts.WARNING} warning` }));
+  }
+  const show = ev.events.filter((e) => e.severity !== 'NORMAL');
+  if (!show.length) { card.append($('div', { class: 'quiet', text: `All ${ev.events.length} checks normal.` })); return; }
+  for (const e of show) {
+    card.append($('div', { class: 'row' }, $('span', { class: `sev ${e.severity}` }, sevIcon(e.severity), e.severity),
+      $('div', {}, $('div', { class: 't', text: e.title }), $('div', { class: 'd', text: e.detail }))));
+  }
+  const normal = ev.events.length - show.length;
+  if (normal) card.append($('div', { class: 'quiet', text: `${normal} further check${normal === 1 ? '' : 's'} normal.` }));
+  tabCount('overview', show.length);
+}
+
 /* ---------- price feed panel ---------- */
 async function renderPriceFeed(panel, models) {
   panel.replaceChildren();
@@ -327,6 +364,25 @@ async function renderPriceFeed(panel, models) {
     [{ h: 'Model' }, { h: 'Basis' }, { h: 'Observed', num: true }, { h: 'Sheet quote', num: true }, { h: 'Δ vs sheet', num: true }, { h: 'Confidence' }, { h: 'Source' }, { h: 'Observed at' }],
     d.latest.map((o) => [displayModel(o.modelLabel), o.basis, usd(o.unitPriceMinor), usd(o.sheetUnitPriceMinor), delta(o), o.confidence, o.source ?? '—', when(o.observedAt)]))));
 
+  if (d.markToMarket && d.markToMarket.totals.modelsComparable) {
+    const m = d.markToMarket, t = m.totals;
+    const mm = $('section', { class: 'card' });
+    mm.append($('h2', { text: 'Mark-to-market' }), $('p', { class: 'sub', text: `Fleet re-valued at the latest observed price per model. Covers ${fmtInt(t.coveredUnits)} of ${fmtInt(t.fleetUnits)} units (${t.modelsComparable} of ${t.modelsObserved} observed models have a comparable sheet quote).` }));
+    const grid = $('div', { class: 'm2m' });
+    const tl = (label, value, foot) => $('div', { class: 'tile' }, $('div', { class: 'label', text: label }), $('div', { class: 'value', text: value }), foot ? $('div', { class: 'foot', text: foot }) : null);
+    grid.append(tl('At sheet quotes', usdCompact(t.sheetValueMinor), 'covered units only'), tl('At observed prices', usdCompact(t.observedValueMinor), 'covered units only'),
+      tl('Difference', (t.deltaMinor >= 0 ? '+' : '-') + usdCompact(Math.abs(t.deltaMinor)), t.deltaPct == null ? '' : `${t.deltaPct > 0 ? '+' : ''}${t.deltaPct}% vs sheet`));
+    mm.append(grid);
+    mm.append($('div', { class: 'tablewrap' }, table(
+      [{ h: 'Model' }, { h: 'Units', num: true }, { h: 'Basis' }, { h: 'Sheet / unit', num: true }, { h: 'Observed / unit', num: true }, { h: 'Δ / unit', num: true }, { h: 'Exposure', num: true }],
+      m.models.map((r) => [displayModel(r.label), fmtInt(r.units), r.basis, usd(r.sheetUnitMinor), usd(r.observedUnitMinor), r.deltaUnitMinor == null ? '—' : (r.deltaUnitMinor >= 0 ? '+' : '-') + usd(Math.abs(r.deltaUnitMinor)), r.exposureMinor == null ? '—' : (r.exposureMinor >= 0 ? '+' : '-') + usd(Math.abs(r.exposureMinor))]))));
+    if (m.clients.length) {
+      mm.append($('h2', { text: 'Clients most exposed', style: 'margin-top:14px;font-size:13px;color:var(--ink-2)' }));
+      mm.append($('div', { class: 'tablewrap' }, table([{ h: 'Client' }, { h: 'Units on observed models', num: true }, { h: 'Value change', num: true }],
+        m.clients.map((c) => [c.clientName, fmtInt(c.units), (c.exposureMinor >= 0 ? '+' : '-') + usd(Math.abs(c.exposureMinor))]))));
+    }
+    panel.append(mm);
+  }
   const log = $('section', { class: 'card' });
   log.append($('h2', { text: `All observations · ${d.observations.length}` }), $('p', { class: 'sub', text: 'Every parsed line, newest last. Lines that did not resolve to a fleet model are reported by the ingest call, never guessed.' }));
   log.append($('div', { class: 'tablewrap' }, table(
@@ -371,7 +427,7 @@ async function main() {
   hero.append(
     tile('Total hashrate', compact(fleet.hashrateTh), 'TH/s', `${fmtNum(fleet.hashrateTh / 1000, 1)} PH/s across ${models.length} models`),
     tile('Rated power', fmtNum(fleet.powerKw / 1000, 2), 'MW', `${fmtNum(fleet.powerKw, 0)} kW rated draw at full fleet`),
-    tile('Fleet efficiency', fmtNum(fleet.powerKw * 1000 / fleet.hashrateTh, 1), 'J/TH', 'SHA-256 dominant; one Kaspa model excluded from comparison'),
+    tile('SHA-256 fleet efficiency', fmtNum(fleet.sha256?.efficiencyJPerTh, 1), 'J/TH', `${fleet.sha256?.models ?? '?'} SHA-256 models · ${models.length - (fleet.sha256?.models ?? 0)} on other algorithms not compared`),
   );
   app.replaceChildren();
   const panels = buildPanels(app);
@@ -390,6 +446,7 @@ async function main() {
     })(),
   );
   panels.overview.append(kpis);
+  renderAttention(panels.overview, kpis);
 
   /* fleet composition + client concentration */
   const byUnits = [...models].sort((a, b) => b.totalUnits - a.totalUnits);
@@ -462,8 +519,11 @@ async function main() {
   activateTab();
   renderPriceFeed(panels.pricefeed, models);
 
-  app.append($('footer', {}, $('img', { src: '/brand/segments-cloud-mark.svg', alt: '' }), $('span', { text: 'Segments Cloud Computing · Operations Command Center · Milestone 1' }),
-    $('span', { text: `Snapshot captured ${meta.capturedAt ? new Date(meta.capturedAt).toUTCString() : '—'}` }), $('a', { href: '/api/health', text: 'API health' })));
+  const prov = $('span', { class: 'prov', text: 'build …' });
+  app.append($('footer', {}, $('img', { src: '/brand/segments-cloud-mark.svg', alt: '' }), $('span', { text: 'Segments Cloud Computing · Operations Command Center' }),
+    $('span', { text: `Data as of ${meta.reportDate ?? '—'} · captured ${meta.capturedAt ? meta.capturedAt.slice(0, 16).replace('T', ' ') + ' UTC' : '—'}` }), prov,
+    $('a', { href: '/api/health', text: 'API health' }), $('a', { href: '/api/dataset?section=holdings&format=csv', text: 'Holdings CSV' })));
+  fetch('/api/health').then((r) => r.json()).then((hh) => { prov.textContent = hh.deploy?.commit ? `build ${hh.deploy.commit.slice(0, 7)} · ${hh.deploy.ref} · ${hh.deploy.env}` : 'build local'; }).catch(() => { prov.textContent = ''; });
 }
 main();
 let wasNarrow = narrow(), resizeTimer;

@@ -54,6 +54,15 @@ export function summarize(dataset) {
       powerKw: Number(powerKw.toFixed(1)),
       usedValueMinor,
       freshValueMinor,
+      // Efficiency is only meaningful within one algorithm; report the dominant one.
+      sha256: (() => {
+        const ms = dataset.models.filter((m) => m.algorithm === 'SHA-256');
+        const th = ms.reduce((a, m) => a + (m.totalHashrateTh ?? 0), 0);
+        const kw = ms.reduce((a, m) => a + (m.totalPowerKw ?? 0), 0);
+        return { models: ms.length, hashrateTh: Number(th.toFixed(1)), powerKw: Number(kw.toFixed(1)),
+          efficiencyJPerTh: th ? Number(((kw * 1000) / th).toFixed(2)) : null };
+      })(),
+      algorithms: dataset.models.reduce((acc, m) => { acc[m.algorithm ?? 'UNKNOWN'] = (acc[m.algorithm ?? 'UNKNOWN'] ?? 0) + 1; return acc; }, {}),
     },
     validation: { ok: dataset.validation.ok, counts: dataset.validation.counts },
   };

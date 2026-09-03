@@ -31,14 +31,19 @@ Design decisions that matter:
 
 ## Current data-quality findings
 
-No contradictions (0 critical). Four warnings that are true statements about the source:
+No contradictions (0 critical). Three warnings that are true statements about the source:
 
 | Finding | Detail |
 | --- | --- |
 | `coverage.workers` | Worker tab carries 225 of 1,318 stated workers (17.1%) — a sample, not the fleet |
 | `coverage.time` | Every worker row is dated 2026-08-04 — no time series is derivable |
 | `coverage.prices` | Price coverage 45.8%–82.3% depending on basis; unpriced units are excluded from totals |
-| `plausibility.efficiency` | One model at 150 J/TH is a Kaspa miner, not a bad number — the source has no algorithm column |
+
+The source has no algorithm column, so each model carries a curated `algorithm`
+(`algorithmSource: "curated"`, see `src/normalize/algorithms.js`). Efficiency
+plausibility is judged inside the algorithm group; the one kHeavyHash model has no
+peer and is reported as `INFO`, not as a bad number. Fleet efficiency in the summary
+is the SHA-256 subset (`summary.fleet.sha256`), which is the only comparable one.
 
 The first two bound what the product can honestly claim: uptime, incidents,
 availability and "what changed today" are **not** answerable from this sheet.
@@ -68,7 +73,7 @@ price with the quote recorded in the sheet. Set-up and the WhatsApp constraints 
 ```bash
 node scripts/ingest.mjs          # ingestion report to stdout; exits non-zero on a CRITICAL finding
 node scripts/ingest.mjs --json   # machine-readable
-npm test                         # 28 tests
+npm test                         # 37 tests
 npm run dev                      # http://localhost:3000
 ```
 
@@ -77,10 +82,11 @@ npm run dev                      # http://localhost:3000
 | Route | Purpose |
 | --- | --- |
 | `GET /api/health` | Liveness, source used, fleet rollup, validation counts |
-| `GET /api/dataset` | Normalized dataset; `?section=models\|clients\|holdings\|workers\|summary` |
+| `GET /api/dataset` | Normalized dataset; `?section=models\|clients\|holdings\|workers\|summary`; add `&format=csv` for a spreadsheet-ready export of one section |
+| `GET /api/events` | Attention feed: severity-ranked events (staleness, integrity, price deltas, feed age, concentration) with an overall NORMAL/INFO/WARNING/CRITICAL state |
 | `GET /api/quality` | Data-quality findings with severities |
 | `GET\|POST /api/refresh` | Force re-ingest, bypassing the warm-instance cache |
-| `GET /api/pricefeed` | Observed supplier prices vs sheet quotes; `?view=all` for every observation |
+| `GET /api/pricefeed` | Observed supplier prices vs sheet quotes plus a fleet mark-to-market (`markToMarket`); `?view=all` for every observation |
 | `POST /api/pricefeed` | Ingest a price list (bearer `PRICEFEED_INGEST_SECRET`) |
 | `GET\|POST /api/whatsapp` | Meta Cloud API webhook: verification handshake and signed message delivery |
 

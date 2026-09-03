@@ -9,6 +9,7 @@
 import { createStore } from '../src/pricefeed/store.js';
 import { ingestText } from '../src/pricefeed/ingest.js';
 import { getDataset } from '../src/dataset.js';
+import { enrichWithQuotes, markToMarket } from '../src/pricefeed/compare.js';
 
 export default async function handler(req, res) {
   try {
@@ -16,18 +17,12 @@ export default async function handler(req, res) {
       const store = createStore();
       const view = String(req.query?.view ?? 'latest');
       const [latest, all, dataset] = await Promise.all([store.latest(), view === 'all' ? store.all() : [], getDataset()]);
-      const quotes = new Map(dataset.models.map((m) => [m.modelKey, m]));
-      // Attach the sheet's own quotes so the caller sees observed vs. recorded.
-      const enrich = (o) => {
-        const q = quotes.get(o.modelKey);
-        const ref = o.basis === 'FRESH' ? q?.freshUnitPriceMinor : q?.usedUnitPriceMinor;
-        return { ...o, sheetUnitPriceMinor: ref ?? null,
-          deltaPct: ref ? Number((((o.unitPriceMinor - ref) / ref) * 100).toFixed(1)) : null };
-      };
+      const enrichedLatest = enrichWithQuotes(latest, dataset.models);
       return res.status(200).json({
         store: { kind: store.kind, durable: store.durable },
-        latest: latest.map(enrich),
-        observations: all.map(enrich),
+        latest: enrichedLatest,
+        observations: enrichWithQuotes(all, dataset.models),
+        markToMarket: enrichedLatest.length ? markToMarket(enrichedLatest, dataset) : null,
         generatedAt: new Date().toISOString(),
       });
     }

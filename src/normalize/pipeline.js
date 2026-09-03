@@ -11,6 +11,7 @@ import {
 } from './coerce.js';
 import { parseClient } from './clients.js';
 import { ModelRegistry, modelSlug } from './models.js';
+import { algorithmFor } from './algorithms.js';
 
 const USD_SCALE = 2;   // cents
 const RATE_SCALE = 6;  // micro-dollars per kWh — hosting rates run to 3-4 dp
@@ -69,6 +70,9 @@ export function parseModels(rows) {
       modelKey: modelSlug(label),
       slug: modelSlug(label),
       label,
+      // Curated, not from the sheet - see normalize/algorithms.js.
+      algorithm: algorithmFor(label),
+      algorithmSource: 'curated',
       hashrateTh,
       powerW,
       // Efficiency is the standard fleet comparison metric; derived, not stated.
